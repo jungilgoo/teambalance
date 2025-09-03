@@ -315,3 +315,122 @@ export const validateOrThrow = <T>(
   
   return result
 }
+
+// =================================================================
+// 6. 추가 보안 검증 함수들
+// =================================================================
+
+/**
+ * 비밀번호 검증 (보안 요구사항 충족)
+ * @param password 비밀번호
+ * @returns 검증된 비밀번호 또는 null
+ */
+export const validatePassword = (password: unknown): string | null => {
+  const validated = validateString(password, 128, false)
+  if (!validated) return null
+  
+  // 최소 6자 이상
+  if (validated.length < 6) return null
+  
+  return validated
+}
+
+/**
+ * URL 검증 (리다이렉트 공격 방지)
+ * @param url URL 문자열
+ * @returns 검증된 URL 또는 null
+ */
+export const validateURL = (url: unknown): string | null => {
+  const validated = validateString(url, 2048, false)
+  if (!validated) return null
+  
+  try {
+    const urlObj = new URL(validated)
+    // 허용된 프로토콜만 허용
+    if (!['http:', 'https:'].includes(urlObj.protocol)) {
+      return null
+    }
+    return validated
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 날짜 검증 (ISO 8601 형식)
+ * @param date 날짜 문자열
+ * @returns 검증된 Date 객체 또는 null
+ */
+export const validateDate = (date: unknown): Date | null => {
+  if (typeof date === 'string') {
+    const dateObj = new Date(date)
+    if (!isNaN(dateObj.getTime())) {
+      return dateObj
+    }
+  } else if (date instanceof Date && !isNaN(date.getTime())) {
+    return date
+  }
+  return null
+}
+
+/**
+ * 부울린 값 검증
+ * @param value 부울린 값
+ * @returns 검증된 boolean 또는 null
+ */
+export const validateBoolean = (value: unknown): boolean | null => {
+  if (typeof value === 'boolean') {
+    return value
+  }
+  
+  if (typeof value === 'string') {
+    const lower = value.toLowerCase().trim()
+    if (lower === 'true' || lower === '1') return true
+    if (lower === 'false' || lower === '0') return false
+  }
+  
+  if (typeof value === 'number') {
+    if (value === 1) return true
+    if (value === 0) return false
+  }
+  
+  return null
+}
+
+/**
+ * JSON 문자열 검증 및 파싱
+ * @param json JSON 문자열
+ * @returns 파싱된 객체 또는 null
+ */
+export const validateJSON = (json: unknown): object | null => {
+  const validated = validateString(json, 10000, false)
+  if (!validated) return null
+  
+  try {
+    const parsed = JSON.parse(validated)
+    return typeof parsed === 'object' && parsed !== null ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 파일 확장자 검증
+ * @param filename 파일명
+ * @param allowedExtensions 허용된 확장자 배열
+ * @returns 검증된 파일명 또는 null
+ */
+export const validateFileExtension = (
+  filename: unknown, 
+  allowedExtensions: string[] = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'txt']
+): string | null => {
+  const validated = validateString(filename, 255, false)
+  if (!validated) return null
+  
+  const extension = validated.split('.').pop()?.toLowerCase()
+  if (!extension || !allowedExtensions.includes(extension)) {
+    return null
+  }
+  
+  return validated
+}
