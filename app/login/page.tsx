@@ -117,7 +117,7 @@ export default function LoginPage() {
         }
 
         // 하이브리드 로그인 시도
-        await hybridLogin(loginId, password)
+        await hybridLogin(loginId, password, false)
         const redirectTo = searchParams.get('redirect') || '/dashboard'
         router.push(redirectTo)
       }

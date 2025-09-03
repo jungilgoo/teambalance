@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseBrowser } from '@/lib/supabase'
+import { createSupabaseServer } from '@/lib/supabase-server'
 import { cookies } from 'next/headers'
 
 interface LogoutResponse {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<LogoutRes
     
     if (sessionToken) {
       // Supabase에서 세션 무효화
-      const supabase = createSupabaseBrowser()
+      const supabase = createSupabaseServer()
       await supabase.auth.signOut()
     }
 

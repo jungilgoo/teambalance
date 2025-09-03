@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseBrowser } from '@/lib/supabase'
+import { createSupabaseServer } from '@/lib/supabase-server'
 import { validateEmail, validateString, ValidationError } from '@/lib/input-validator'
 import { cookies } from 'next/headers'
 
@@ -28,25 +28,36 @@ interface LoginResponse {
 
 export async function POST(request: NextRequest): Promise<NextResponse<LoginResponse>> {
   try {
+    console.log('[LOGIN API] 로그인 요청 시작')
     const body = await request.json() as LoginRequest
+    console.log('[LOGIN API] 요청 데이터:', { email: body.email, hasPassword: !!body.password })
     
     // 입력값 검증
     const validatedEmail = validateEmail(body.email)
     const validatedPassword = validateString(body.password, 128, false)
     
     if (!validatedEmail || !validatedPassword) {
+      console.log('[LOGIN API] 입력값 검증 실패')
       return NextResponse.json({
         success: false,
         message: '이메일 또는 비밀번호가 올바르지 않습니다.'
       }, { status: 400 })
     }
 
+    console.log('[LOGIN API] Supabase 인증 시도:', validatedEmail)
+    
     // Supabase 인증
-    const supabase = createSupabaseBrowser()
+    const supabase = createSupabaseServer()
     const { data, error } = await supabase.auth.signInWithPassword({
       email: validatedEmail,
       password: validatedPassword
     })
+    
+    if (error) {
+      console.log('[LOGIN API] Supabase 인증 오류:', error)
+    } else {
+      console.log('[LOGIN API] Supabase 인증 성공:', data.user?.email)
+    }
 
     if (error || !data.user) {
       return NextResponse.json({

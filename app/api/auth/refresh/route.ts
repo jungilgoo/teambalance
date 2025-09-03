@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseBrowser } from '@/lib/supabase'
+import { createSupabaseServer } from '@/lib/supabase-server'
 
 interface RefreshResponse {
   success: boolean
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RefreshRe
     }
 
     // Supabase 토큰 갱신
-    const supabase = createSupabaseBrowser()
+    const supabase = createSupabaseServer()
     const { data, error } = await supabase.auth.refreshSession({
       refresh_token: refreshToken
     })

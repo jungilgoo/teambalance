@@ -86,17 +86,33 @@ export const hybridCookieLogin = async (
   password: string,
   rememberMe: boolean = false
 ): Promise<{ success: boolean; user?: User; message?: string }> => {
-  // 이메일 형식인지 확인
-  const isEmail = identifier.includes('@')
-  
-  if (isEmail) {
-    return cookieLogin(identifier, password, rememberMe)
-  } else {
-    // 닉네임으로 로그인 시도 (이메일로 변환 필요)
-    // 현재는 이메일 로그인만 지원하므로 에러 반환
-    return { 
-      success: false, 
-      message: '현재는 이메일 로그인만 지원합니다. 닉네임 로그인은 곧 지원예정입니다.' 
+  try {
+    // 이메일 형식인지 확인
+    const isEmail = identifier.includes('@')
+    
+    if (isEmail) {
+      // 이메일 로그인
+      return cookieLogin(identifier, password, rememberMe)
+    } else {
+      // 닉네임으로 이메일 찾기
+      const { findUserByLoginId } = await import('./supabase-api')
+      const user = await findUserByLoginId(identifier)
+      
+      if (!user) {
+        return {
+          success: false,
+          message: '존재하지 않는 닉네임입니다.'
+        }
+      }
+
+      // 이메일로 실제 로그인 시도
+      return cookieLogin(user.email, password, rememberMe)
+    }
+  } catch (error: any) {
+    console.error('하이브리드 쿠키 로그인 오류:', error)
+    return {
+      success: false,
+      message: error.message || '로그인 중 오류가 발생했습니다.'
     }
   }
 }

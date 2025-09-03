@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseBrowser } from '@/lib/supabase'
+import { createSupabaseServer } from '@/lib/supabase-server'
 
 interface UserSessionResponse {
   success: boolean
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<UserSessio
     }
 
     // Supabase 세션 설정 및 검증
-    const supabase = createSupabaseBrowser()
+    const supabase = createSupabaseServer()
     
     // 세션 토큰으로 사용자 정보 조회
     const { data: { user }, error: authError } = await supabase.auth.getUser(sessionToken)
