@@ -35,17 +35,17 @@ export const checkUsernameExists = async (username: string): Promise<boolean> =>
       .from('profiles')
       .select('id')
       .eq('username', validatedUsername)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       console.error('닉네임 중복 확인 오류:', error)
-      return true // 에러 시 안전을 위해 존재하는 것으로 처리
+      return false // 예외 시 가입/변경 진행 허용 (사용자 경험 우선)
     }
 
     return !!data
   } catch (error) {
     console.error('닉네임 중복 확인 중 예외:', error)
-    return true
+    return false // 예외 시 가입/변경 진행 허용 (사용자 경험 우선)
   }
 }
 
