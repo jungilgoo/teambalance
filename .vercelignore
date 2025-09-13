@@ -1,0 +1,15 @@
+# Vercel 배포에서 제외할 파일들
+.git/
+.gitmessage
+dev.log
+nul
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+claudedocs/
+sql/debug-*.sql
+sql/test-*.sql
+README.md
+구버전CLAUDE.md
