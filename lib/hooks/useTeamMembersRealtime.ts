@@ -12,6 +12,7 @@ import { calculateMemberTierScore } from '../stats'
 export function useTeamMembersRealtime(teamId: string, enabled: boolean = true) {
   const [initialLoading, setInitialLoading] = useState(true)
   const [members, setMembers] = useState<TeamMember[]>([])
+  const [pendingUpdates, setPendingUpdates] = useState<Set<string>>(new Set())
 
   // 실시간 구독 설정
   const {
@@ -33,7 +34,17 @@ export function useTeamMembersRealtime(teamId: string, enabled: boolean = true) 
       // 토스트 알림 등을 여기서 처리 가능
     },
     onUpdate: (oldMember, newMember) => {
-      // 디버깅이 필요할 때 여기서 로깅 추가
+      console.log('[TeamMembers] 실시간 업데이트 수신:', { 
+        memberId: (newMember as any).id,
+        isPending: pendingUpdates.has((newMember as any).id)
+      })
+      
+      // 대기 중인 업데이트가 있으면 실시간 업데이트를 무시
+      // (사용자의 낙관적 업데이트를 보호)
+      if (pendingUpdates.has((newMember as any).id)) {
+        console.log('[TeamMembers] 대기 중인 업데이트가 있어 실시간 업데이트 무시')
+        return
+      }
     },
     onDelete: (deletedMember) => {
       // 멤버 추방/탈퇴 알림 처리 가능
@@ -103,7 +114,10 @@ export function useTeamMembersRealtime(teamId: string, enabled: boolean = true) 
    * 티어 업데이트 (로컬 상태 즉시 반영 + API 호출)
    */
   const handleTierUpdate = useCallback(async (memberId: string, newTier: TierType) => {
-    // 1. 로컬 상태 즉시 업데이트 (UX 향상)
+    // 1. 대기 중인 업데이트로 등록
+    setPendingUpdates(prev => new Set([...prev, memberId]))
+    
+    // 2. 로컬 상태 즉시 업데이트 (UX 향상)
     updateItem(memberId, (member) => ({
       ...member,
       tier: newTier,
@@ -113,7 +127,7 @@ export function useTeamMembersRealtime(teamId: string, enabled: boolean = true) 
       }
     }))
 
-    // 2. API 호출로 서버 데이터 업데이트
+    // 3. API 호출로 서버 데이터 업데이트
     try {
       await updateMemberTier(memberId, newTier)
     } catch (error) {
@@ -122,6 +136,15 @@ export function useTeamMembersRealtime(teamId: string, enabled: boolean = true) 
       // 실패 시 이전 상태로 롤백 (서버에서 실시간 업데이트로 되돌아옴)
       await loadInitialData() // 또는 revert 로직
       throw error
+    } finally {
+      // 4. 대기 중인 업데이트에서 제거 (성공/실패 관계없이)
+      setTimeout(() => {
+        setPendingUpdates(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(memberId)
+          return newSet
+        })
+      }, 1000) // 1초 후 제거 (실시간 업데이트가 올 시간을 고려)
     }
   }, [updateItem, loadInitialData])
 
@@ -133,14 +156,17 @@ export function useTeamMembersRealtime(teamId: string, enabled: boolean = true) 
     mainPosition: Position, 
     subPositions: Position[]
   ) => {
-    // 1. 로컬 상태 즉시 업데이트
+    // 1. 대기 중인 업데이트로 등록
+    setPendingUpdates(prev => new Set([...prev, memberId]))
+    
+    // 2. 로컬 상태 즉시 업데이트
     updateItem(memberId, (member) => ({
       ...member,
       mainPosition,
       subPositions
     }))
 
-    // 2. API 호출
+    // 3. API 호출
     try {
       await updateMemberPositions(memberId, mainPosition, subPositions)
     } catch (error) {
@@ -149,6 +175,15 @@ export function useTeamMembersRealtime(teamId: string, enabled: boolean = true) 
       // 실패 시 롤백
       await loadInitialData()
       throw error
+    } finally {
+      // 4. 대기 중인 업데이트에서 제거 (성공/실패 관계없이)
+      setTimeout(() => {
+        setPendingUpdates(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(memberId)
+          return newSet
+        })
+      }, 1000) // 1초 후 제거 (실시간 업데이트가 올 시간을 고려)
     }
   }, [updateItem, loadInitialData])
 
