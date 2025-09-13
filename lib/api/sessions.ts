@@ -443,6 +443,21 @@ export const getMatchesByTeamId = async (teamId: string): Promise<Match[]> => {
 
 export const getMatchBySessionId = async (sessionId: string): Promise<Match | null> => {
   try {
+    console.log('🔍 매치 조회 시작 - sessionId:', sessionId)
+    
+    // 먼저 해당 세션ID로 매치가 있는지만 확인
+    const { data: matchesOnly, error: matchesError } = await supabase
+      .from('matches')
+      .select('id, session_id, winner, created_at')
+      .eq('session_id', sessionId)
+    
+    console.log('🗃️ matches 테이블 조회 결과:', {
+      sessionId,
+      matchesCount: matchesOnly?.length || 0,
+      matches: matchesOnly,
+      error: matchesError?.message
+    })
+    
     // 세션 ID로 매치와 매치 멤버들을 조인하여 조회
     const { data: match, error } = await supabase
       .from('matches')
@@ -466,8 +481,26 @@ export const getMatchBySessionId = async (sessionId: string): Promise<Match | nu
       .eq('session_id', sessionId)
       .single()
 
+    console.log('📊 매치 조회 결과:', { 
+      sessionId,
+      hasMatch: !!match,
+      error: error?.message,
+      matchData: match ? {
+        id: (match as any).id,
+        session_id: (match as any).session_id,
+        team_id: (match as any).team_id,
+        winner: (match as any).winner,
+        matchMembersCount: (match as any).match_members?.length
+      } : null
+    })
+
     if (error || !match) {
-      console.log('매치 조회 결과 없음:', error)
+      console.log('❌ 매치 조회 결과 없음:', {
+        sessionId,
+        errorCode: error?.code,
+        errorMessage: error?.message,
+        errorDetails: error?.details
+      })
       return null
     }
 

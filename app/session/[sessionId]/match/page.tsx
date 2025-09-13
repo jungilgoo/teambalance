@@ -525,11 +525,30 @@ export default function MatchResultPage() {
         // Edit 모드인 경우 기존 경기 결과 데이터 로드
         if (isEditMode && isMounted) {
           try {
-            console.log('Edit 모드: 기존 경기 결과 로드 시작')
+            console.log('📝 Edit 모드: 기존 경기 결과 로드 시작', { sessionId, isEditMode })
             const existingMatch = await getMatchBySessionId(sessionId)
             
             if (existingMatch) {
-              console.log('기존 경기 결과 로드 완료:', existingMatch)
+              console.log('✅ 기존 경기 결과 로드 완료:', {
+                matchId: existingMatch.id,
+                winner: existingMatch.winner,
+                team1Count: existingMatch.team1.members.length,
+                team2Count: existingMatch.team2.members.length,
+                team1Members: existingMatch.team1.members.map(m => ({ 
+                  id: m.memberId, 
+                  champion: m.champion,
+                  kills: m.kills,
+                  deaths: m.deaths,
+                  assists: m.assists
+                })),
+                team2Members: existingMatch.team2.members.map(m => ({ 
+                  id: m.memberId, 
+                  champion: m.champion,
+                  kills: m.kills,
+                  deaths: m.deaths,
+                  assists: m.assists
+                }))
+              })
               
               // 기존 매치 데이터와 세션 데이터를 병합
               const mergeMatchDataWithSession = (sessionMembers: any[], matchMembers: any[]) => {
@@ -553,12 +572,16 @@ export default function MatchResultPage() {
               setTeam2Data(mergedTeam2)
               setWinner(existingMatch.winner)
               
-              console.log('Edit 모드: 기존 데이터 적용 완료')
+              console.log('🔄 Edit 모드: 기존 데이터 적용 완료', {
+                mergedTeam1Count: mergedTeam1.length,
+                mergedTeam2Count: mergedTeam2.length,
+                winner: existingMatch.winner
+              })
             } else {
-              console.log('Edit 모드: 기존 경기 결과를 찾을 수 없음')
+              console.log('⚠️ Edit 모드: 기존 경기 결과를 찾을 수 없음', { sessionId })
             }
           } catch (error) {
-            console.error('Edit 모드: 기존 경기 결과 로드 오류:', error)
+            console.error('❌ Edit 모드: 기존 경기 결과 로드 오류:', { sessionId, error })
           }
         }
 
