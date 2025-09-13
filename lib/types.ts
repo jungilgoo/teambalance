@@ -141,16 +141,18 @@ export interface Match {
   sessionId: string
   teamId: string
   winner: 'team1' | 'team2'
-  team1: string[] // team1 멤버 ID 배열
-  team2: string[] // team2 멤버 ID 배열
+  team1: { members: MatchMember[] } // team1 멤버 정보 배열
+  team2: { members: MatchMember[] } // team2 멤버 정보 배열
+  mvpMemberId?: string
   createdAt: Date
 }
 
 export interface MatchMember {
   id: string
-  matchId: string
-  teamMemberId: string
-  teamSide: 'team1' | 'team2'
+  matchId?: string
+  memberId: string // 실제 사용되는 필드명
+  teamMemberId?: string // 레거시 호환성
+  teamSide?: 'team1' | 'team2'
   position: Position
   champion: string
   kills: number
