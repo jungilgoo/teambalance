@@ -8,7 +8,7 @@ import { ChampionSelect } from '@/components/ui/champion-select'
 import { NumberWheel } from '@/components/ui/number-wheel'
 import { getAuthState } from '@/lib/auth'
 import { Session, User, Position, TeamMember } from '@/lib/types'
-import { getSession, updateSessionResult, saveMatchResult, getMatchBySessionId } from '@/lib/supabase-api'
+import { getSession, updateSessionResult, saveMatchResult, updateMatchResult, getMatchBySessionId } from '@/lib/supabase-api'
 import { useSessionRealtime } from '@/lib/hooks/useSessionRealtime'
 import { useMatchRealtime } from '@/lib/hooks/useMatchRealtime'
 import { positionNames } from '@/lib/utils'
@@ -674,34 +674,63 @@ export default function MatchResultPage() {
         throw new Error('세션 상태 업데이트에 실패했습니다.')
       }
 
-      // 2. 실제 경기 결과 저장 및 통계 업데이트
-      const matchId = await saveMatchResult({
-        sessionId,
-        teamId: realtimeSession?.teamId || '',
-        winningTeam: winner,
-        team1: team1Data.map(member => ({
-          memberId: member.id,
-          position: (member as any).position || member.mainPosition,
-          champion: (member as any).champion || '',
-          kills: (member as any).kills || 0,
-          deaths: (member as any).deaths || 0,
-          assists: (member as any).assists || 0
-        })),
-        team2: team2Data.map(member => ({
-          memberId: member.id,
-          position: (member as any).position || member.mainPosition,
-          champion: (member as any).champion || '',
-          kills: (member as any).kills || 0,
-          deaths: (member as any).deaths || 0,
-          assists: (member as any).assists || 0
-        }))
-      })
+      // 2. 실제 경기 결과 저장 또는 업데이트
+      let success = false
+      
+      if (isEditMode) {
+        // 수정 모드: 기존 매치 업데이트
+        console.log('수정 모드: 기존 매치 업데이트')
+        success = await updateMatchResult(sessionId, {
+          winningTeam: winner,
+          team1: team1Data.map(member => ({
+            memberId: member.id,
+            position: (member as any).position || member.mainPosition,
+            champion: (member as any).champion || '',
+            kills: (member as any).kills || 0,
+            deaths: (member as any).deaths || 0,
+            assists: (member as any).assists || 0
+          })),
+          team2: team2Data.map(member => ({
+            memberId: member.id,
+            position: (member as any).position || member.mainPosition,
+            champion: (member as any).champion || '',
+            kills: (member as any).kills || 0,
+            deaths: (member as any).deaths || 0,
+            assists: (member as any).assists || 0
+          }))
+        })
+      } else {
+        // 새로 생성 모드: 새로운 매치 생성
+        console.log('생성 모드: 새로운 매치 생성')
+        const matchId = await saveMatchResult({
+          sessionId,
+          teamId: realtimeSession?.teamId || '',
+          winningTeam: winner,
+          team1: team1Data.map(member => ({
+            memberId: member.id,
+            position: (member as any).position || member.mainPosition,
+            champion: (member as any).champion || '',
+            kills: (member as any).kills || 0,
+            deaths: (member as any).deaths || 0,
+            assists: (member as any).assists || 0
+          })),
+          team2: team2Data.map(member => ({
+            memberId: member.id,
+            position: (member as any).position || member.mainPosition,
+            champion: (member as any).champion || '',
+            kills: (member as any).kills || 0,
+            deaths: (member as any).deaths || 0,
+            assists: (member as any).assists || 0
+          }))
+        })
+        success = !!matchId
+      }
 
-      if (!matchId) {
-        throw new Error('경기 결과 저장에 실패했습니다.')
+      if (!success) {
+        throw new Error(isEditMode ? '경기 결과 수정에 실패했습니다.' : '경기 결과 저장에 실패했습니다.')
       }
       
-      alert('경기 결과가 저장되었습니다! 멤버 통계가 업데이트되었습니다.')
+alert(isEditMode ? '경기 결과가 수정되었습니다!' : '경기 결과가 저장되었습니다! 멤버 통계가 업데이트되었습니다.')
       router.push(`/team/${realtimeSession?.teamId}`)
     } catch (error) {
       console.error('경기 결과 저장 실패:', error)

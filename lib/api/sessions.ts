@@ -1047,3 +1047,102 @@ export const getAllMemberStreaks = async (teamId: string): Promise<Array<{
     return []
   }
 }
+
+export const updateMatchResult = async (
+  sessionId: string,
+  matchData: {
+    winningTeam: 'team1' | 'team2'
+    team1: Array<{
+      memberId: string
+      champion: string
+      position: Position
+      kills: number
+      deaths: number
+      assists: number
+    }>
+    team2: Array<{
+      memberId: string
+      champion: string
+      position: Position
+      kills: number
+      deaths: number
+      assists: number
+    }>
+  }
+): Promise<boolean> => {
+  try {
+    console.log('매치 업데이트 시작:', sessionId)
+    
+    // 1. 기존 매치 정보 조회
+    const existingMatch = await getMatchBySessionId(sessionId)
+    if (!existingMatch) {
+      console.error('업데이트할 매치를 찾을 수 없습니다.')
+      return false
+    }
+
+    console.log('기존 매치 정보:', existingMatch)
+
+    // 2. 매치 테이블 업데이트 (승리팀만)
+    const { error: matchUpdateError } = await (supabase as any)
+      .from('matches')
+      .update({
+        winner: matchData.winningTeam
+      })
+      .eq('session_id', sessionId)
+
+    if (matchUpdateError) {
+      console.error('매치 업데이트 오류:', matchUpdateError)
+      return false
+    }
+
+    // 3. 기존 match_members 삭제
+    const { error: deleteMembersError } = await (supabase as any)
+      .from('match_members')
+      .delete()
+      .eq('match_id', existingMatch.id)
+
+    if (deleteMembersError) {
+      console.error('기존 매치 멤버 삭제 오류:', deleteMembersError)
+      return false
+    }
+
+    // 4. 새로운 match_members 생성
+    const allMatchMembers = [
+      ...matchData.team1.map(member => ({
+        match_id: existingMatch.id,
+        team_member_id: member.memberId,
+        team_side: 'team1' as const,
+        position: member.position,
+        champion: member.champion,
+        kills: member.kills,
+        deaths: member.deaths,
+        assists: member.assists
+      })),
+      ...matchData.team2.map(member => ({
+        match_id: existingMatch.id,
+        team_member_id: member.memberId,
+        team_side: 'team2' as const,
+        position: member.position,
+        champion: member.champion,
+        kills: member.kills,
+        deaths: member.deaths,
+        assists: member.assists
+      }))
+    ]
+
+    const { error: insertMembersError } = await (supabase as any)
+      .from('match_members')
+      .insert(allMatchMembers)
+
+    if (insertMembersError) {
+      console.error('새 매치 멤버 생성 오류:', insertMembersError)
+      return false
+    }
+
+    console.log('매치 업데이트 완료')
+    return true
+  } catch (error) {
+    console.error('매치 업데이트 중 예외:', error)
+    return false
+  }
+}
