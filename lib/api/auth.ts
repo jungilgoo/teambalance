@@ -26,8 +26,12 @@ export const checkEmailExists = async (email: string): Promise<boolean> => {
 
 export const checkUsernameExists = async (username: string): Promise<boolean> => {
   try {
+    console.log('[DEBUG] checkUsernameExists 호출 - username:', username)
     const validatedUsername = validateUsernameInput(username)
+    console.log('[DEBUG] 검증된 username:', validatedUsername)
+    
     if (!validatedUsername) {
+      console.log('[DEBUG] 유효하지 않은 username - false 반환')
       return false
     }
 
@@ -37,14 +41,18 @@ export const checkUsernameExists = async (username: string): Promise<boolean> =>
       .eq('username', validatedUsername)
       .maybeSingle()
 
+    console.log('[DEBUG] Supabase 쿼리 결과 - data:', data, 'error:', error)
+
     if (error) {
-      console.error('닉네임 중복 확인 오류:', error)
+      console.error('[DEBUG] 닉네임 중복 확인 오류:', error)
       return false // 예외 시 가입/변경 진행 허용 (사용자 경험 우선)
     }
 
-    return !!data
+    const result = !!data
+    console.log('[DEBUG] 최종 결과:', result)
+    return result
   } catch (error) {
-    console.error('닉네임 중복 확인 중 예외:', error)
+    console.error('[DEBUG] 닉네임 중복 확인 중 예외:', error)
     return false // 예외 시 가입/변경 진행 허용 (사용자 경험 우선)
   }
 }
