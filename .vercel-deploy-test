@@ -1,0 +1,15 @@
+# Vercel 배포 테스트 파일
+# 이 파일은 Vercel "A commit author is required" 오류 해결을 위한 테스트입니다.
+# 생성 시간: 2025-09-13 15:45
+# 목적: Vercel Git integration 문제 진단
+
+## 테스트 시나리오
+1. 완전히 깨끗한 커밋 메시지 (Co-Authored-By 없음)
+2. 정상적인 Git author/committer 정보
+3. main 브랜치에서 직접 푸시
+
+## 예상 결과
+- 이 커밋이 성공하면: Vercel Git integration 정상
+- 이 커밋이 실패하면: Vercel 프로젝트 설정 문제
+
+테스트 ID: vercel-deploy-test-20250913-1545
