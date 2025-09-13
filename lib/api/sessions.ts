@@ -1125,7 +1125,26 @@ export const updateMatchResult = async (
 
     console.log('기존 매치 정보:', existingMatch)
 
-    // 2. 매치 테이블 업데이트 (승리팀만)
+    // 2. 기존 통계 롤백 (기존 승패 결과를 되돌림)
+    console.log('🔄 기존 통계 롤백 시작')
+    const oldTeam1Winners = existingMatch.winner === 'team1'
+    const oldTeam2Winners = existingMatch.winner === 'team2'
+
+    // 기존 team1 멤버들의 통계 롤백
+    for (const member of existingMatch.team1.members) {
+      const wasWinner = oldTeam1Winners
+      const wasMVP = member.memberId === existingMatch.mvpMemberId
+      await rollbackMemberStats(member.memberId, member.position, wasWinner, wasMVP)
+    }
+
+    // 기존 team2 멤버들의 통계 롤백
+    for (const member of existingMatch.team2.members) {
+      const wasWinner = oldTeam2Winners
+      const wasMVP = member.memberId === existingMatch.mvpMemberId
+      await rollbackMemberStats(member.memberId, member.position, wasWinner, wasMVP)
+    }
+
+    // 3. 매치 테이블 업데이트 (승리팀만)
     const { error: matchUpdateError } = await (supabase as any)
       .from('matches')
       .update({
@@ -1138,7 +1157,7 @@ export const updateMatchResult = async (
       return false
     }
 
-    // 3. 기존 match_members 삭제
+    // 4. 기존 match_members 삭제
     const { error: deleteMembersError } = await (supabase as any)
       .from('match_members')
       .delete()
@@ -1149,7 +1168,7 @@ export const updateMatchResult = async (
       return false
     }
 
-    // 4. 새로운 match_members 생성
+    // 5. 새로운 match_members 생성
     const allMatchMembers = [
       ...matchData.team1.map(member => ({
         match_id: existingMatch.id,
@@ -1182,7 +1201,46 @@ export const updateMatchResult = async (
       return false
     }
 
-    console.log('매치 업데이트 완료')
+    // 6. 새로운 통계 적용 (새로운 승패 결과 반영)
+    console.log('📊 새로운 통계 적용 시작')
+    
+    // MVP 계산을 위한 Match 객체 생성
+    const matchForMVP = {
+      id: existingMatch.id,
+      sessionId: sessionId,
+      team1: { members: matchData.team1 },
+      team2: { members: matchData.team2 },
+      winner: matchData.winningTeam,
+      createdAt: new Date()
+    }
+    const newMvpMemberId = calculateMatchMVP(matchForMVP as any)
+
+    // MVP 정보도 업데이트
+    if (newMvpMemberId !== existingMatch.mvpMemberId) {
+      await (supabase as any)
+        .from('matches')
+        .update({ mvp_member_id: newMvpMemberId })
+        .eq('session_id', sessionId)
+    }
+
+    const newTeam1Winners = matchData.winningTeam === 'team1'
+    const newTeam2Winners = matchData.winningTeam === 'team2'
+
+    // 새로운 team1 멤버들의 통계 적용
+    for (const member of matchData.team1) {
+      const isWinner = newTeam1Winners
+      const isMVP = member.memberId === newMvpMemberId
+      await updateMemberStats(member.memberId, member.position, isWinner, isMVP)
+    }
+
+    // 새로운 team2 멤버들의 통계 적용
+    for (const member of matchData.team2) {
+      const isWinner = newTeam2Winners
+      const isMVP = member.memberId === newMvpMemberId
+      await updateMemberStats(member.memberId, member.position, isWinner, isMVP)
+    }
+
+    console.log('매치 업데이트 및 통계 갱신 완료')
     return true
   } catch (error) {
     console.error('매치 업데이트 중 예외:', error)
