@@ -1,16 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback, memo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { getAuthState, getCurrentUser } from '@/lib/auth'
-import { Team, TeamMember, User } from '@/lib/types'
+import { useAuth } from '@/components/providers/AuthProvider'
+import { Team, TeamMember } from '@/lib/types'
 import { getTeamById, getTeamMembers, getUserById, updateMemberTier, updateMemberPositions, getTopRankings, getTeamMVPRanking, getCurrentStreaks, getPendingJoinRequests } from '@/lib/supabase-api'
 import { calculateWinRate } from '@/lib/stats'
 import { positionNames } from '@/lib/utils'
-import { Users, Crown, Plus, Play, BarChart3, Settings, History, Trophy } from 'lucide-react'
+import { Users, Crown, Plus, Play, BarChart3, Settings, History, Trophy, Wifi, WifiOff } from 'lucide-react'
+import { useTeamMembersRealtime } from '@/lib/hooks/useTeamMembersRealtime'
+import { usePendingRequestsCount } from '@/lib/hooks/usePendingRequestsRealtime'
 import CreateSessionModal from '@/components/session/CreateSessionModal'
 import InviteMemberModal from '@/components/team/InviteMemberModal'
 import { TierBadge } from '@/components/ui/tier-badge'
@@ -23,14 +25,25 @@ export default function TeamDashboard() {
   const params = useParams()
   const router = useRouter()
   const teamId = params.teamId as string
+  const { authState, isLoading: authLoading } = useAuth()
   
   const [team, setTeam] = useState<Team | null>(null)
-  const [members, setMembers] = useState<TeamMember[]>([])
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [topRankings, setTopRankings] = useState<Array<{nickname: string, winRate: number}>>([])
   const [mvpLeader, setMvpLeader] = useState<{memberId: string, nickname: string, mvpCount: number} | null>(null)
   const [currentStreak, setCurrentStreak] = useState<{nickname: string, streak: number} | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
+
+  // 실시간 팀 멤버 관리 (항상 호출하여 Hook 순서 일관성 유지)
+  const {
+    members,
+    memberStats,
+    loading: membersLoading,
+    connected: realtimeConnected,
+    error: realtimeError,
+    handleTierUpdate: realtimeTierUpdate,
+    handlePositionUpdate: realtimePositionUpdate,
+    refreshMembers
+  } = useTeamMembersRealtime(teamId, !!teamId) // currentUser 조건 제거
   const [tierEditDialog, setTierEditDialog] = useState<{
     isOpen: boolean
     memberId: string | null
@@ -61,104 +74,87 @@ export default function TeamDashboard() {
   const [isTeamManagementModalOpen, setIsTeamManagementModalOpen] = useState(false)
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
 
+  // 이 부분은 제거되고 아래에서 동적으로 처리됨
 
   useEffect(() => {
-    const checkAuthAndLoadTeam = async () => {
+    // 인증 상태가 로딩 중이거나 teamId가 없으면 대기
+    if (authLoading || !teamId) {
+      return
+    }
+
+    // 인증되지 않았으면 로그인으로 리다이렉션
+    if (!authState.isAuthenticated) {
+      router.replace('/login')
+      return
+    }
+
+    // 팀 데이터 로드
+    const loadTeamData = async () => {
+      if (team || isLoading) return // 이미 로드했거나 로딩 중이면 중복 실행 방지
+      
+      setIsLoading(true)
       try {
-        console.log('팀 페이지: 인증 상태 확인 시작')
-        const authState = await getAuthState()
-        console.log('팀 페이지: 인증 상태 결과', authState)
-        
-        if (!authState.isAuthenticated) {
-          console.log('팀 페이지: 인증 안됨, 로그인으로 이동')
-          router.push('/login')
-          return
-        }
-
-        console.log('팀 페이지: 인증됨, 사용자:', authState.user?.name)
-        setCurrentUser(authState.user)
-
         // 팀 데이터 로드
-        console.log('팀 페이지: 팀 데이터 로드 시작, teamId:', teamId)
-        const teamData = await getTeamById(teamId)
+        const [teamData, rankings, mvpRanking, streak] = await Promise.all([
+          getTeamById(teamId),
+          getTopRankings(teamId),
+          getTeamMVPRanking(teamId),
+          getCurrentStreaks(teamId)
+        ])
+
         if (!teamData) {
           alert('팀을 찾을 수 없습니다.')
           router.push('/dashboard')
           return
         }
 
-        console.log('팀 페이지: 팀 데이터 로드 완료:', teamData.name)
-        const teamMembers = await getTeamMembers(teamId)
-        console.log('팀 페이지: 팀 멤버 로드 완료:', teamMembers.length, '명')
-        
-        // 현재 사용자가 팀의 활성 멤버인지 확인
-        const currentMember = teamMembers.find(member => 
-          member.userId === authState.user?.id && member.status === 'active'
-        )
-        
-        if (!currentMember && teamData.leaderId !== authState.user?.id) {
-          console.log('팀 페이지: 멤버가 아니거나 추방됨, 대시보드로 이동')
-          alert('이 팀에 접근할 수 있는 권한이 없습니다.')
-          router.push('/dashboard')
-          return
-        }
-        
-        console.log('팀 페이지: 멤버 권한 확인 완료')
-        
-        // 팀 정보 데이터 로드
-        const rankings = await getTopRankings(teamId)
-        console.log('팀 페이지: 상위 랭킹 로드 완료:', rankings.length, '명')
-        
-        const mvpRanking = await getTeamMVPRanking(teamId)
         const mvp = mvpRanking.length > 0 && mvpRanking[0].mvpCount > 0 ? mvpRanking[0] : null
-        console.log('팀 페이지: MVP 리더 로드 완료:', mvp?.nickname, mvp?.mvpCount)
-        
-        const streak = await getCurrentStreaks(teamId)
-        console.log('팀 페이지: 현재 연승/연패 로드 완료:', streak?.nickname, streak?.streak)
-        
-        // 리더인 경우 승인 대기 요청 수 로드
-        if (authState.user && teamData.leaderId === authState.user.id) {
-          await loadPendingRequestsCount()
-        }
         
         setTeam(teamData)
-        setMembers(teamMembers)
         setTopRankings(rankings)
         setMvpLeader(mvp)
         setCurrentStreak(streak)
-        setIsLoading(false)
       } catch (error) {
         console.error('팀 페이지: 데이터 로드 오류:', error)
         router.push('/dashboard')
+      } finally {
+        setIsLoading(false)
       }
     }
 
-    checkAuthAndLoadTeam()
-  }, [teamId, router])
+    loadTeamData()
+  }, [authState, authLoading, teamId, router, team, isLoading])
 
-  const isTeamLeader = currentUser && team && team.leaderId === currentUser.id
+  const isTeamLeader = authState.user && team && team.leaderId === authState.user.id
 
-  // 승인 대기 요청 수 로드
-  const loadPendingRequestsCount = async () => {
-    try {
-      const pendingRequests = await getPendingJoinRequests(teamId)
-      setPendingRequestsCount(pendingRequests.length)
-    } catch (error) {
-      console.error('승인 대기 요청 수 로드 오류:', error)
+  // 실시간 승인 대기 요청 추적 (항상 호출, 팀 리더 여부와 관계없이)
+  const {
+    count: dynamicPendingCount,
+    loading: dynamicPendingLoading,
+    error: dynamicPendingError
+  } = usePendingRequestsCount(teamId, !!teamId) // teamId가 있으면 항상 활성화
+
+  // 실시간 승인 대기 카운트를 로컬 상태와 동기화
+  useEffect(() => {
+    if (isTeamLeader) {
+      setPendingRequestsCount(dynamicPendingCount)
+    } else {
       setPendingRequestsCount(0)
     }
+  }, [dynamicPendingCount, isTeamLeader])
+
+  // 승인 대기 요청 수 로드 (실시간 Hook에서 처리됨)
+  const loadPendingRequestsCount = async () => {
+    // 실시간 Hook에서 자동으로 처리됨
   }
 
-  // 팀 멤버 업데이트 후 호출할 함수
+  // 팀 멤버 업데이트 후 호출할 함수 (실시간 Hook으로 대체됨)
   const handleMemberUpdate = async () => {
     try {
-      const teamMembers = await getTeamMembers(teamId)
-      setMembers(teamMembers)
+      // 실시간 Hook에서 자동으로 처리되지만, 수동 새로고침이 필요한 경우
+      await refreshMembers()
       
-      // 승인 대기 카운트도 새로고침
-      if (isTeamLeader) {
-        await loadPendingRequestsCount()
-      }
+      // 승인 대기 카운트는 실시간으로 자동 업데이트됨
     } catch (error) {
       console.error('팀 멤버 업데이트 오류:', error)
     }
@@ -187,25 +183,15 @@ export default function TeamDashboard() {
     })
   }
 
-  const handleTierUpdate = async (memberId: string, newTier: TierType) => {
+  const handleTierUpdate = useCallback(async (memberId: string, newTier: TierType) => {
     try {
-      // Supabase API 업데이트
-      await updateMemberTier(memberId, newTier)
-      
-      // UI 상태 업데이트
-      setMembers(prevMembers => 
-        prevMembers.map(member => 
-          member.id === memberId 
-            ? { ...member, tier: newTier }
-            : member
-        )
-      )
-      console.log('티어 업데이트 성공:', newTier)
+      // 실시간 Hook을 사용하여 티어 업데이트 (로컬 상태 즉시 반영 + API 호출)
+      await realtimeTierUpdate(memberId, newTier)
     } catch (error) {
       console.error('티어 업데이트 실패:', error)
       alert('티어 업데이트에 실패했습니다.')
     }
-  }
+  }, [realtimeTierUpdate])
 
   const handlePositionBadgeClick = (member: TeamMember) => {
     setPositionEditDialog({
@@ -217,25 +203,15 @@ export default function TeamDashboard() {
     })
   }
 
-  const handlePositionUpdate = async (memberId: string, mainPosition: Position, subPositions: Position[]) => {
+  const handlePositionUpdate = useCallback(async (memberId: string, mainPosition: Position, subPositions: Position[]) => {
     try {
-      // Supabase API 업데이트 (다중 부포지션 지원)
-      await updateMemberPositions(memberId, mainPosition, subPositions)
-      
-      // UI 상태 업데이트
-      setMembers(prevMembers => 
-        prevMembers.map(member => 
-          member.id === memberId 
-            ? { ...member, mainPosition, subPositions }
-            : member
-        )
-      )
-      console.log('포지션 업데이트 성공:', mainPosition, subPositions)
+      // 실시간 Hook을 사용하여 포지션 업데이트 (로컬 상태 즉시 반영 + API 호출)
+      await realtimePositionUpdate(memberId, mainPosition, subPositions)
     } catch (error) {
       console.error('포지션 업데이트 실패:', error)
       alert('포지션 업데이트에 실패했습니다.')
     }
-  }
+  }, [realtimePositionUpdate])
 
   const closeTierEditDialog = () => {
     setTierEditDialog({
@@ -256,10 +232,26 @@ export default function TeamDashboard() {
     })
   }
 
-  if (isLoading) {
+  // 모든 Hook은 조건부 return 이전에 선언되어야 함
+  const memberStatsWithWinRate = useMemo(() => {
+    // 멤버별 승률을 미리 계산하여 렌더링 성능 향상
+    return members.map(member => ({
+      ...member,
+      winRate: calculateWinRate(member.stats.totalWins, member.stats.totalLosses)
+    }))
+  }, [members])
+
+  if (authLoading || isLoading || membersLoading || !authState.isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div>로딩 중...</div>
+        <div className="text-center">
+          <div>로딩 중...</div>
+          {realtimeError && (
+            <div className="text-sm text-red-500 mt-2">
+              실시간 연결 오류: {realtimeError}
+            </div>
+          )}
+        </div>
       </div>
     )
   }
@@ -294,6 +286,15 @@ export default function TeamDashboard() {
             </div>
             
             <div className="flex items-center space-x-2">
+              {/* 실시간 연결 상태 표시 */}
+              <div className="flex items-center space-x-1">
+                {realtimeConnected ? (
+                  <Wifi className="w-4 h-4 text-green-500" />
+                ) : (
+                  <WifiOff className="w-4 h-4 text-red-500" />
+                )}
+              </div>
+              
               <div className="text-right text-sm text-muted-foreground">
                 <div>멤버 {members.length}명</div>
                 <div>{new Date(team.createdAt).toLocaleDateString('ko-KR')} 생성</div>
@@ -334,7 +335,7 @@ export default function TeamDashboard() {
               <CardContent className="space-y-3">
                 <CreateSessionModal 
                   teamId={teamId} 
-                  currentUserId={currentUser?.id || ''} 
+                  currentUserId={authState.user?.id || ''} 
                 />
                 
                 <Button 
@@ -357,7 +358,7 @@ export default function TeamDashboard() {
                 
                 <InviteMemberModal 
                   teamId={teamId} 
-                  currentUserId={currentUser?.id || ''} 
+                  currentUserId={authState.user?.id || ''} 
                   teamName={team?.name || ''}
                   isTeamLeader={!!isTeamLeader}
                 />
@@ -453,60 +454,56 @@ export default function TeamDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {members.map((member) => {
-                    const winRate = calculateWinRate(member.stats.totalWins, member.stats.totalLosses)
-                    
-                    return (
-                      <div key={member.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold text-lg">{member.nickname}</h3>
+                  {memberStatsWithWinRate.map((member) => (
+                    <div key={member.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <h3 className="font-semibold text-lg break-words min-w-0">{member.nickname}</h3>
+                            <button
+                              onClick={() => handleTierBadgeClick(member)}
+                              className="transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md flex-shrink-0"
+                            >
+                              <TierBadge tier={member.tier} size="sm" />
+                            </button>
+                            {member.role === 'leader' && (
+                              <Crown className="w-4 h-4 text-yellow-500 flex-shrink-0" />
+                            )}
+                          </div>
+                          
+                          <div className="space-y-3 text-sm">
+                            <div>
+                              <div className="text-muted-foreground mb-1">포지션</div>
                               <button
-                                onClick={() => handleTierBadgeClick(member)}
-                                className="transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md"
+                                onClick={() => handlePositionBadgeClick(member)}
+                                className="font-medium hover:text-blue-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md"
                               >
-                                <TierBadge tier={member.tier} size="sm" />
+                                주: {positionNames[member.mainPosition]} / 부: {
+                                  member.subPositions && member.subPositions.length > 0 
+                                    ? member.subPositions.map(pos => positionNames[pos]).join(', ')
+                                    : '없음'
+                                }
                               </button>
-                              {member.role === 'leader' && (
-                                <Crown className="w-4 h-4 text-yellow-500" />
-                              )}
                             </div>
                             
-                            <div className="space-y-3 text-sm">
-                              <div>
-                                <div className="text-muted-foreground mb-1">포지션</div>
-                                <button
-                                  onClick={() => handlePositionBadgeClick(member)}
-                                  className="font-medium hover:text-blue-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md"
-                                >
-                                  주: {positionNames[member.mainPosition]} / 부: {
-                                    member.subPositions && member.subPositions.length > 0 
-                                      ? member.subPositions.map(pos => positionNames[pos]).join(', ')
-                                      : '없음'
-                                  }
-                                </button>
+                            <div className="flex items-center gap-4 text-sm">
+                              <div className="text-muted-foreground">
+                                티어점수: <span className="font-medium text-foreground">{member.stats.tierScore}</span>
                               </div>
-                              
-                              <div className="flex items-center gap-4 text-sm">
-                                <div className="text-muted-foreground">
-                                  티어점수: <span className="font-medium text-foreground">{member.stats.tierScore}</span>
-                                </div>
-                                <div className="text-muted-foreground">•</div>
-                                <div className="text-muted-foreground">
-                                  승률: <span className="font-medium text-green-600">{winRate}%</span>
-                                </div>
-                                <div className="text-muted-foreground">•</div>
-                                <div className="text-muted-foreground">
-                                  <span className="font-medium text-foreground">{member.stats.totalWins}승 {member.stats.totalLosses}패</span>
-                                </div>
+                              <div className="text-muted-foreground">•</div>
+                              <div className="text-muted-foreground">
+                                승률: <span className="font-medium text-green-600">{member.winRate}%</span>
+                              </div>
+                              <div className="text-muted-foreground">•</div>
+                              <div className="text-muted-foreground">
+                                <span className="font-medium text-foreground">{member.stats.totalWins}승 {member.stats.totalLosses}패</span>
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    )
-                  })}
+                    </div>
+                  ))}
                 </div>
 
                 {members.length === 0 && (
@@ -532,7 +529,7 @@ export default function TeamDashboard() {
               handleTierUpdate(tierEditDialog.memberId, newTier)
             }
           }}
-          canEdit={currentUser?.id === members.find(m => m.id === tierEditDialog.memberId)?.userId}
+          canEdit={authState.user?.id === members.find(m => m.id === tierEditDialog.memberId)?.userId}
         />
       )}
 
@@ -549,17 +546,17 @@ export default function TeamDashboard() {
               handlePositionUpdate(positionEditDialog.memberId, mainPosition, subPositions)
             }
           }}
-          canEdit={currentUser?.id === members.find(m => m.id === positionEditDialog.memberId)?.userId}
+          canEdit={authState.user?.id === members.find(m => m.id === positionEditDialog.memberId)?.userId}
         />
       )}
 
       {/* 팀 관리 모달 */}
-      {currentUser && (
+      {authState.user && (
         <TeamManagementModal
           isOpen={isTeamManagementModalOpen}
           onClose={() => setIsTeamManagementModalOpen(false)}
           teamId={teamId}
-          currentUserId={currentUser.id}
+          currentUserId={authState.user.id}
           onMemberUpdate={handleMemberUpdate}
         />
       )}

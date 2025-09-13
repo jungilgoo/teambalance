@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useCallback } from 'react'
 import { cn } from '@/lib/utils'
 
 interface DragNumberInputProps {
@@ -40,7 +41,7 @@ export function DragNumberInput({
     e.preventDefault()
   }
 
-  const handleGlobalMouseMove = (e: MouseEvent) => {
+  const handleGlobalMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging) return
     
     const deltaY = dragStartY - e.clientY // Y축 반전 (위로 드래그하면 증가)
@@ -51,13 +52,13 @@ export function DragNumberInput({
     if (newValue !== value) {
       onChange(newValue)
     }
-  }
+  }, [isDragging, dragStartY, dragStartValue, min, max, value, onChange])
 
-  const handleGlobalMouseUp = () => {
+  const handleGlobalMouseUp = useCallback(() => {
     setIsDragging(false)
     document.removeEventListener('mousemove', handleGlobalMouseMove)
     document.removeEventListener('mouseup', handleGlobalMouseUp)
-  }
+  }, [handleGlobalMouseMove])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseInt(e.target.value) || 0

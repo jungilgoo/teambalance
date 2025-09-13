@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -61,7 +61,7 @@ export default function TeamManagementModal({
   const [isKicking, setIsKicking] = useState(false)
 
   // 승인 대기 요청 로드
-  const loadPendingRequests = async () => {
+  const loadPendingRequests = useCallback(async () => {
     setIsLoading(true)
     try {
       const requests = await getPendingJoinRequests(teamId)
@@ -72,10 +72,10 @@ export default function TeamManagementModal({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [teamId])
 
   // 활성 멤버 로드
-  const loadActiveMembers = async () => {
+  const loadActiveMembers = useCallback(async () => {
     setIsLoading(true)
     try {
       const members = await getTeamMembers(teamId)
@@ -86,39 +86,40 @@ export default function TeamManagementModal({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [teamId])
 
   useEffect(() => {
     if (isOpen) {
       loadPendingRequests()
       loadActiveMembers()
     }
-  }, [isOpen, teamId])
+  }, [isOpen, teamId, loadActiveMembers, loadPendingRequests])
 
   // 참가 승인
-  const handleApprove = async (userId: string, nickname: string) => {
+  const handleApprove = async (memberId: string, nickname: string) => {
     // 로딩 상태 설정
     setPendingRequests(prev => 
       prev.map(req => 
-        req.userId === userId ? { ...req, isProcessing: true } : req
+        req.id === memberId ? { ...req, isProcessing: true } : req
       )
     )
 
     try {
-      const result = await approveJoinRequest(teamId, userId, currentUserId)
+      const result = await approveJoinRequest(memberId, currentUserId)
       
-      if (result.success) {
+      if (result) {
         alert(`${nickname}님의 참가를 승인했습니다.`)
         
         // 승인된 요청을 목록에서 제거
-        setPendingRequests(prev => prev.filter(req => req.userId !== userId))
+        setPendingRequests(prev => prev.filter(req => req.id !== memberId))
         
         // 팀 멤버 목록 새로고침
         if (onMemberUpdate) {
           onMemberUpdate()
         }
+        loadActiveMembers() // 활성 멤버 목록도 새로고침
       } else {
-        alert(result.message)
+        alert('승인 처리에 실패했습니다.')
       }
     } catch (error) {
       console.error('승인 처리 오류:', error)
@@ -127,40 +128,38 @@ export default function TeamManagementModal({
       // 로딩 상태 해제
       setPendingRequests(prev => 
         prev.map(req => 
-          req.userId === userId ? { ...req, isProcessing: false } : req
+          req.id === memberId ? { ...req, isProcessing: false } : req
         )
       )
     }
   }
 
   // 참가 거절
-  const handleReject = async (userId: string, nickname: string) => {
+  const handleReject = async (memberId: string, nickname: string) => {
     // 로딩 상태 설정
     setPendingRequests(prev => 
       prev.map(req => 
-        req.userId === userId ? { ...req, isProcessing: true } : req
+        req.id === memberId ? { ...req, isProcessing: true } : req
       )
     )
 
     try {
       const result = await rejectJoinRequest(
-        teamId, 
-        userId, 
-        currentUserId, 
+        memberId, 
         rejectionReason || '리더에 의해 거절됨'
       )
       
-      if (result.success) {
+      if (result) {
         alert(`${nickname}님의 참가 요청을 거절했습니다.`)
         
         // 거절된 요청을 목록에서 제거
-        setPendingRequests(prev => prev.filter(req => req.userId !== userId))
+        setPendingRequests(prev => prev.filter(req => req.id !== memberId))
         
         // 거절 사유 초기화
         setRejectionReason('')
         setRejectingUserId(null)
       } else {
-        alert(result.message)
+        alert('거절 처리에 실패했습니다.')
       }
     } catch (error) {
       console.error('거절 처리 오류:', error)
@@ -169,7 +168,7 @@ export default function TeamManagementModal({
       // 로딩 상태 해제
       setPendingRequests(prev => 
         prev.map(req => 
-          req.userId === userId ? { ...req, isProcessing: false } : req
+          req.id === memberId ? { ...req, isProcessing: false } : req
         )
       )
     }
@@ -189,7 +188,7 @@ export default function TeamManagementModal({
         currentUserId
       )
 
-      if (result.success) {
+      if (result) {
         alert(`${member.nickname}님을 팀에서 추방했습니다.`)
         
         // 데이터 새로고침
@@ -198,7 +197,7 @@ export default function TeamManagementModal({
           onMemberUpdate()
         }
       } else {
-        alert(result.message)
+        alert('작업에 실패했습니다.')
       }
     } catch (error) {
       console.error('멤버 추방 오류:', error)
@@ -310,7 +309,9 @@ export default function TeamManagementModal({
                               </div>
                               <div className="text-sm">
                                 <span className="font-medium text-green-600">부포지션:</span>{' '}
-                                {request.subPositions.map(pos => positionNames[pos]).join(', ')}
+                                {request.subPositions && request.subPositions.length > 0 
+                                  ? request.subPositions.map(pos => positionNames[pos]).join(', ')
+                                  : '없음'}
                               </div>
                             </div>
 
@@ -325,7 +326,7 @@ export default function TeamManagementModal({
                           {/* 액션 버튼 */}
                           <div className="flex gap-2 ml-4">
                             <Button
-                              onClick={() => handleApprove(request.userId, request.nickname)}
+                              onClick={() => handleApprove(request.id, request.nickname)}
                               disabled={request.isProcessing}
                               size="sm"
                               className="bg-green-600 hover:bg-green-700 text-white"
@@ -339,7 +340,7 @@ export default function TeamManagementModal({
                             </Button>
 
                             <Button
-                              onClick={() => setRejectingUserId(request.userId)}
+                              onClick={() => setRejectingUserId(request.id)}
                               disabled={request.isProcessing}
                               size="sm"
                               variant="destructive"
@@ -355,7 +356,7 @@ export default function TeamManagementModal({
                         </div>
 
                         {/* 거절 사유 입력 */}
-                        {rejectingUserId === request.userId && (
+                        {rejectingUserId === request.id && (
                           <div className="mt-4 pt-4 border-t">
                             <Label htmlFor="rejection-reason" className="text-sm font-medium">
                               거절 사유 (선택사항)
@@ -379,7 +380,7 @@ export default function TeamManagementModal({
                                 취소
                               </Button>
                               <Button
-                                onClick={() => handleReject(request.userId, request.nickname)}
+                                onClick={() => handleReject(request.id, request.nickname)}
                                 size="sm"
                                 variant="destructive"
                               >
@@ -444,7 +445,9 @@ export default function TeamManagementModal({
                               </div>
                               <div className="text-sm">
                                 <span className="font-medium text-green-600">부포지션:</span>{' '}
-                                {member.subPositions.map(pos => positionNames[pos]).join(', ')}
+                                {member.subPositions && member.subPositions.length > 0 
+                                  ? member.subPositions.map(pos => positionNames[pos]).join(', ')
+                                  : '없음'}
                               </div>
                             </div>
 

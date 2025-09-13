@@ -9,6 +9,8 @@ import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { TeamMember } from '@/lib/types'
 import { getTeamMembers, getUserById, createSession } from '@/lib/supabase-api'
+import { useTeamMembersRealtime } from '@/lib/hooks/useTeamMembersRealtime'
+import { useTeamSessionsRealtime } from '@/lib/hooks/useSessionRealtime'
 import { calculateWinRate, calculateMemberTierScore } from '@/lib/stats'
 import { tierNames, positionNames } from '@/lib/utils'
 import { analyzeTeamFormation, simulateTeamComposition, recommendOptimalPositions, optimizedTeamBalancing, convertToLegacyFormat } from '@/lib/position-analysis'
@@ -20,7 +22,15 @@ interface CreateSessionModalProps {
 }
 
 interface SelectedMember extends TeamMember {
-  user: any
+  user: {
+    id: string
+    email: string
+    name: string
+    username?: string
+    avatar?: string
+    provider: 'kakao' | 'naver' | 'google'
+    createdAt: Date
+  }
   calculatedTierScore?: number
 }
 
@@ -45,24 +55,29 @@ export default function CreateSessionModal({ teamId, currentUserId }: CreateSess
       team2Score: number
     }
   } | null>(null)
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [membersWithUser, setMembersWithUser] = useState<SelectedMember[]>([])
-  const [isLoading, setIsLoading] = useState(true)
 
-  // 팀 멤버 데이터 로드
+  // 실시간 팀 멤버 관리
+  const {
+    members: teamMembers,
+    loading: membersLoading
+  } = useTeamMembersRealtime(teamId)
+
+  // 실시간 팀 세션 관리
+  const {
+    activeSessions,
+    activeSessionCount
+  } = useTeamSessionsRealtime(teamId)
+
+  // 실시간 팀 멤버 데이터를 사용자 정보와 함께 가공
   useEffect(() => {
-    const loadTeamMembers = async () => {
-      if (!open) return
-      
-      try {
-        setIsLoading(true)
-        console.log('세션 모달: 팀 멤버 로드 시작, teamId:', teamId)
-        const members = await getTeamMembers(teamId)
-        setTeamMembers(members)
+    const loadMembersWithUserData = async () => {
+      if (!open || !teamMembers.length) return
 
+      try {
         // 각 멤버의 사용자 정보도 로드
         const membersWithUserData = await Promise.all(
-          members.map(async (member) => {
+          teamMembers.map(async (member) => {
             const user = await getUserById(member.userId)
             return {
               ...member,
@@ -72,26 +87,14 @@ export default function CreateSessionModal({ teamId, currentUserId }: CreateSess
           })
         )
 
-        setMembersWithUser(membersWithUserData)
-        console.log('세션 모달: 팀 멤버 로드 완료:', membersWithUserData.length, '명')
-        console.log('세션 모달: 멤버 데이터 상세:', membersWithUserData.map(m => ({
-          id: m.id,
-          nickname: m.nickname,
-          status: m.status,
-          tier: m.tier,
-          mainPosition: m.mainPosition,
-          subPositions: m.subPositions,
-          userId: m.userId
-        })))
+        setMembersWithUser(membersWithUserData as any)
       } catch (error) {
-        console.error('세션 모달: 팀 멤버 로드 실패:', error)
-      } finally {
-        setIsLoading(false)
+        console.error('세션 모달: 사용자 정보 로드 오류:', error)
       }
     }
 
-    loadTeamMembers()
-  }, [teamId, open])
+    loadMembersWithUserData()
+  }, [open, teamMembers])
 
   const handleMemberToggle = (memberId: string) => {
     setSelectedMembers(prev => 
@@ -121,14 +124,11 @@ export default function CreateSessionModal({ teamId, currentUserId }: CreateSess
       feasible: boolean
     }
   } => {
-    console.log('스마트 밸런싱 시작:', players.length, '명')
-    
     try {
       // 새로운 최적화된 팀 밸런싱 알고리즘 사용
       const optimizedResult = optimizedTeamBalancing(players)
       
       if (optimizedResult.success && optimizedResult.bestCombination) {
-        console.log('최적화된 밸런싱 성공:', optimizedResult.message)
         const legacyFormat = convertToLegacyFormat(optimizedResult.bestCombination)
         
         return {
@@ -142,15 +142,12 @@ export default function CreateSessionModal({ teamId, currentUserId }: CreateSess
             feasible: legacyFormat.positionFeasible
           }
         }
-      } else {
-        console.warn('최적화된 밸런싱 실패:', optimizedResult.message)
       }
     } catch (error) {
-      console.warn('최적화된 밸런싱 오류, 백업 방식 사용:', error)
+      // 최적화된 밸런싱 실패 시 백업 방식 사용
     }
 
     // 백업: 균형잡힌 스네이크 드래프트
-    console.log('백업: 균형잡힌 스네이크 드래프트 사용')
     const sortedPlayers = [...players].sort((a, b) => b.calculatedTierScore! - a.calculatedTierScore!)
     const team1: SelectedMember[] = []
     const team2: SelectedMember[] = []
@@ -271,36 +268,31 @@ export default function CreateSessionModal({ teamId, currentUserId }: CreateSess
     
     try {
       setIsBalancing(true)
-      console.log('세션 생성 시작...')
       
-      // 실제 세션 생성 API 호출
-      const team1MembersData = balancedTeams.team1.map((member, index) => ({
-        memberId: member.id,
-        position: ['top', 'jungle', 'mid', 'adc', 'support'][index] as any,
-        nickname: member.nickname,
-        champion: '',
-        kills: 0,
-        deaths: 0,
-        assists: 0
-      }))
+      // 포지션 배열을 상수로 선언하여 반복 생성 방지
+      const positions = ['top', 'jungle', 'mid', 'adc', 'support'] as const
       
-      const team2MembersData = balancedTeams.team2.map((member, index) => ({
-        memberId: member.id,
-        position: ['top', 'jungle', 'mid', 'adc', 'support'][index] as any,
-        nickname: member.nickname,
-        champion: '',
-        kills: 0,
-        deaths: 0,
-        assists: 0
-      }))
+      // 데이터 변환 최적화 - 한 번에 처리
+      const createTeamData = (teamMembers: typeof balancedTeams.team1) => 
+        teamMembers.map((member, index) => ({
+          id: member.id,
+          nickname: member.nickname,
+          position: positions[index],
+          tier: member.tier,
+          tierScore: member.calculatedTierScore || 0
+        }))
+      
+      const team1MembersData = createTeamData(balancedTeams.team1)
+      const team2MembersData = createTeamData(balancedTeams.team2)
 
-      console.log('팀1 데이터:', team1MembersData)
-      console.log('팀2 데이터:', team2MembersData)
+      // 선택된 멤버 ID만 추출
+      const selectedMemberIds = selectedMembers
 
       const sessionId = await createSession(
         teamId,
         currentUserId,
-        selectedMembers,
+        [...team1MembersData, ...team2MembersData], // 모든 선택된 멤버 데이터
+        balancingMethod,
         team1MembersData,
         team2MembersData
       )
@@ -309,18 +301,47 @@ export default function CreateSessionModal({ teamId, currentUserId }: CreateSess
         throw new Error('세션 생성에 실패했습니다.')
       }
       
-      console.log('세션 생성 완료:', sessionId)
+      // 세션이 실제로 데이터베이스에 저장되었는지 확인
+      let sessionReady = false
+      let retryCount = 0
+      const maxRetries = 10
       
-      // 경기 결과 입력 페이지로 이동
-      router.push(`/session/${sessionId}/match`)
+      while (!sessionReady && retryCount < maxRetries) {
+        try {
+          const { getSession } = await import('@/lib/supabase-api')
+          const sessionData = await getSession(sessionId)
+          
+          if (sessionData) {
+            sessionReady = true
+          } else {
+            retryCount++
+            await new Promise(resolve => setTimeout(resolve, 500))
+          }
+        } catch (error) {
+          retryCount++
+          await new Promise(resolve => setTimeout(resolve, 500))
+        }
+      }
       
-      setOpen(false)
-      setSelectedMembers([])
-      setBalancedTeams(null)
+      if (!sessionReady) {
+        throw new Error('세션 생성이 완료되지 않았습니다. 잠시 후 다시 시도해주세요.')
+      }
+      
+      // 페이지 이동
+      const targetUrl = `/session/${sessionId}/match`
+      router.push(targetUrl)
+      
+      // 비동기적으로 상태 정리
+      setTimeout(() => {
+        setOpen(false)
+        setSelectedMembers([])
+        setBalancedTeams(null)
+        setIsBalancing(false)
+      }, 100)
+      
     } catch (error) {
       console.error('세션 생성 실패:', error)
       alert('세션 생성에 실패했습니다.')
-    } finally {
       setIsBalancing(false)
     }
   }
@@ -340,6 +361,11 @@ export default function CreateSessionModal({ teamId, currentUserId }: CreateSess
           </DialogTitle>
           <DialogDescription>
             참가할 멤버를 선택하고 팀 밸런싱을 진행하세요 (정확히 10명)
+            {activeSessionCount > 0 && (
+              <div className="mt-2 text-orange-600 font-medium">
+                ⚠️ 현재 {activeSessionCount}개의 활성 세션이 있습니다
+              </div>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -375,7 +401,7 @@ export default function CreateSessionModal({ teamId, currentUserId }: CreateSess
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-base truncate">
+                        <span className="font-semibold text-base break-all">
                           {member.nickname}
                         </span>
                         {member.role === 'leader' && <Crown className="w-4 h-4 text-yellow-500 flex-shrink-0" />}
@@ -582,8 +608,8 @@ export default function CreateSessionModal({ teamId, currentUserId }: CreateSess
                   <Button variant="outline" onClick={balanceTeams} disabled={isBalancing}>
                     다시 밸런싱
                   </Button>
-                  <Button onClick={confirmSession}>
-                    내전 확정
+                  <Button onClick={confirmSession} disabled={isBalancing}>
+                    {isBalancing ? '세션 생성 중...' : '내전 확정'}
                   </Button>
                 </div>
               </div>

@@ -1,5 +1,5 @@
-import { Team, TeamMember, User, TierType, Position, Match, TeamInvite, InviteLink } from './types'
-import { calculateTierScore } from './stats'
+import { Team, TeamMember, User, TierType, Position, Match, TeamInvite } from '../lib/types'
+import { calculateTierScore } from '../lib/stats'
 
 // 임시 팀 데이터
 export const mockTeams: Team[] = [
@@ -98,7 +98,7 @@ export const mockUsers: User[] = [
 ]
 
 // 임시 팀 멤버 데이터
-export const mockTeamMembers: TeamMember[] = [
+export const mockTeamMembers: any[] = [
   {
     id: '1',
     teamId: '1',
@@ -109,6 +109,8 @@ export const mockTeamMembers: TeamMember[] = [
     tier: 'diamond_ii',
     mainPosition: 'top',
     subPositions: ['jungle'],
+    status: 'active',
+    joinType: 'invite',
     stats: {
       totalWins: 15,
       totalLosses: 8,
@@ -383,13 +385,13 @@ export const updateMemberTier = (memberId: string, newTier: TierType): boolean =
 }
 
 // localStorage에서 팀별 경기 결과 조회
-export const getMatchesByTeamId = (teamId: string): Match[] => {
+export const getMatchesByTeamId = (teamId: string): any[] => {
   if (typeof window === 'undefined') {
     return []
   }
 
   try {
-    const matches: Match[] = []
+    const matches: any[] = []
     
     // localStorage의 모든 키를 확인
     for (let i = 0; i < localStorage.length; i++) {
@@ -402,7 +404,7 @@ export const getMatchesByTeamId = (teamId: string): Match[] => {
           const parsed = JSON.parse(matchData)
           
           // 날짜 문자열을 Date 객체로 변환
-          const match: Match = {
+          const match: any = {
             ...parsed,
             createdAt: new Date(parsed.createdAt)
           }
@@ -435,7 +437,7 @@ export const createSampleMatchData = (teamId: string = '1') => {
   const now = new Date()
   
   // 경기 1: Team 1 승리 (3일 전)
-  const match1: Match = {
+  const match1: any = {
     id: 'match_' + Date.now() + '_1',
     sessionId: teamId + '_' + (now.getTime() - 3 * 24 * 60 * 60 * 1000),
     team1: {
@@ -461,7 +463,7 @@ export const createSampleMatchData = (teamId: string = '1') => {
   }
 
   // 경기 2: Team 2 승리 (1일 전)
-  const match2: Match = {
+  const match2: any = {
     id: 'match_' + Date.now() + '_2',
     sessionId: teamId + '_' + (now.getTime() - 1 * 24 * 60 * 60 * 1000),
     team1: {
@@ -487,7 +489,7 @@ export const createSampleMatchData = (teamId: string = '1') => {
   }
 
   // 경기 3: Team 1 승리 (6시간 전)
-  const match3: Match = {
+  const match3: any = {
     id: 'match_' + Date.now() + '_3',
     sessionId: teamId + '_' + (now.getTime() - 6 * 60 * 60 * 1000),
     team1: {
@@ -569,7 +571,7 @@ export const saveMatchResult = async (matchData: {
 }): Promise<string> => {
   try {
     // Match 객체 생성
-    const match: Match = {
+    const match: any = {
       id: `match_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       sessionId: matchData.sessionId,
       team1: {
@@ -631,7 +633,7 @@ const updateMemberStats = async (memberId: string, playedPosition: Position, won
 
   const member = mockTeamMembers[memberIndex]
   const isMainPosition = member.mainPosition === playedPosition
-  const isSubPosition = member.subPositions.includes(playedPosition)
+  const isSubPosition = member.subPositions && member.subPositions.includes(playedPosition)
 
   // 통계 업데이트
   const updatedStats = {
@@ -702,7 +704,7 @@ export const createTeamInvite = async (teamId: string, createdBy: string, maxUse
 }
 
 // 초대 코드로 팀 정보 가져오기
-export const getTeamByInviteCode = async (inviteCode: string): Promise<InviteLink | null> => {
+export const getTeamByInviteCode = async (inviteCode: string): Promise<any | null> => {
   try {
     // localStorage에서 모든 초대 검색
     if (typeof window === 'undefined') return null
@@ -779,7 +781,7 @@ export const joinTeamByInviteCode = async (inviteCode: string, userId: string, n
             }
 
             // 새 멤버 추가
-            const newMember: TeamMember = {
+            const newMember: any = {
               id: `member_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
               teamId: invite.teamId,
               userId,

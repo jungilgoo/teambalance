@@ -47,7 +47,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<LoginResp
     console.log('[LOGIN API] Supabase 인증 시도:', validatedEmail)
     
     // Supabase 인증
-    const supabase = createSupabaseServer()
+    const supabase = await createSupabaseServer()
     const { data, error } = await supabase.auth.signInWithPassword({
       email: validatedEmail,
       password: validatedPassword
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<LoginResp
       .from('profiles')
       .select('id, email, name, username')
       .eq('id', data.user.id)
-      .single()
+      .single() as { data: { id: string; email: string; name: string; username?: string } | null; error: any }
 
     if (profileError || !profile) {
       return NextResponse.json({

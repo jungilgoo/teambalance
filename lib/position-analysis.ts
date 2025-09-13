@@ -109,7 +109,7 @@ export function recommendOptimalPositions(members: TeamMember[]): Record<string,
       !assignedMembers.has(member.id) &&
       canMemberPlay(member, position) &&
       getMemberPositionPreferences(member).length === 1 &&
-      getMemberPositionPreferences(member)[0].position === position
+      (getMemberPositionPreferences(member)[0] as any).position === position
     )
 
     if (exclusiveMembers.length > 0) {
@@ -609,16 +609,23 @@ function convertSimpleAlgorithmResult(result: SimpleBalancingResult): TeamCombin
     team2: result.team2,
     team1Assignments: result.team1Assignments,
     team2Assignments: result.team2Assignments,
-    totalScoreDifference: result.scoreDifference,
-    averageScoreDifference: result.scoreDifference / 5,
+    totalScoreDifference: (result as any).scoreDifference,
+    averageScoreDifference: (result as any).scoreDifference / 5,
     positionBalances,
     balanceScore,
     feasible: true
   }
 }
 
+// 알고리즘 결과 타입 정의
+interface AlgorithmResult {
+  team1: Array<{ assignedPosition: Position; [key: string]: unknown }>
+  team2: Array<{ assignedPosition: Position; [key: string]: unknown }>
+  [key: string]: unknown
+}
+
 // 이전 알고리즘 결과를 기존 형식으로 변환 (사용되지 않음)
-function convertNewAlgorithmResult(result: any): TeamCombinationEvaluation {
+function convertNewAlgorithmResult(result: AlgorithmResult): TeamCombinationEvaluation {
   // 포지션별 균형 분석 생성
   const positions: Position[] = ['top', 'jungle', 'mid', 'adc', 'support']
   const positionBalances: TeamPositionBalance[] = []
@@ -627,8 +634,8 @@ function convertNewAlgorithmResult(result: any): TeamCombinationEvaluation {
     const team1Member = result.team1.find(m => m.assignedPosition === position)
     const team2Member = result.team2.find(m => m.assignedPosition === position)
     
-    const team1Score = team1Member?.positionScore || 0
-    const team2Score = team2Member?.positionScore || 0
+    const team1Score = (team1Member?.positionScore as number) || 0
+    const team2Score = (team2Member?.positionScore as number) || 0
     const scoreDifference = Math.abs(team1Score - team2Score)
     const maxScore = Math.max(team1Score, team2Score)
     const balanceRatio = maxScore > 0 ? 1 - (scoreDifference / maxScore) : 1
@@ -647,11 +654,11 @@ function convertNewAlgorithmResult(result: any): TeamCombinationEvaluation {
   const team2Assignments: Record<string, Position> = {}
 
   result.team1.forEach(member => {
-    team1Assignments[member.id] = member.assignedPosition
+    team1Assignments[(member as any).id] = (member as any).assignedPosition
   })
   
   result.team2.forEach(member => {
-    team2Assignments[member.id] = member.assignedPosition
+    team2Assignments[(member as any).id] = (member as any).assignedPosition
   })
 
   // 균형 점수 계산
@@ -659,7 +666,7 @@ function convertNewAlgorithmResult(result: any): TeamCombinationEvaluation {
   const balanceScore = Math.round(averageBalanceRatio * 100)
 
   // 원래 TeamMember 타입으로 변환
-  const team1Original: TeamMember[] = result.team1.map(member => ({
+  const team1Original: TeamMember[] = (result as any).team1.map((member: any) => ({
     id: member.id,
     teamId: member.teamId,
     userId: member.userId,
@@ -672,7 +679,7 @@ function convertNewAlgorithmResult(result: any): TeamCombinationEvaluation {
     stats: member.stats
   }))
 
-  const team2Original: TeamMember[] = result.team2.map(member => ({
+  const team2Original: TeamMember[] = (result as any).team2.map((member: any) => ({
     id: member.id,
     teamId: member.teamId,
     userId: member.userId,
@@ -690,8 +697,8 @@ function convertNewAlgorithmResult(result: any): TeamCombinationEvaluation {
     team2: team2Original,
     team1Assignments,
     team2Assignments,
-    totalScoreDifference: result.scoreDifference,
-    averageScoreDifference: result.scoreDifference / 5,
+    totalScoreDifference: (result as any).scoreDifference,
+    averageScoreDifference: (result as any).scoreDifference / 5,
     positionBalances,
     balanceScore,
     feasible: true

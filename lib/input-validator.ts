@@ -88,11 +88,11 @@ export const validateEmail = (email: unknown): string | null => {
 }
 
 /**
- * 사용자명(닉네임) 검증
+ * 사용자명(닉네임) 검증 - 입력 데이터 검증용
  * @param username 사용자명
  * @returns 검증된 사용자명 또는 null
  */
-export const validateUsername = (username: unknown): string | null => {
+export const validateUsernameInput = (username: unknown): string | null => {
   const validated = validateString(username, 20, false)
   
   if (!validated) {
@@ -106,8 +106,8 @@ export const validateUsername = (username: unknown): string | null => {
     return null
   }
 
-  // 최소 길이 체크 (3자 이상)
-  if (validated.length < 3) {
+  // 최소 길이 체크 (2자 이상)
+  if (validated.length < 2) {
     return null
   }
 
@@ -268,7 +268,7 @@ export const validateBatch = <T extends Record<string, unknown>>(
 
   for (const [key, input] of Object.entries(inputs)) {
     const validator = validators[key as keyof T]
-    const validated = validator(input)
+    const validated = validator(input as any)
     
     if (validated === null || validated === undefined) {
       return null

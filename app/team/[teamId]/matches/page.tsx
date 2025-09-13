@@ -5,9 +5,8 @@ import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { getAuthState } from '@/lib/auth'
-import { Match, Team } from '@/lib/types'
+import { Match, Team, MatchMember } from '@/lib/types'
 import { getTeamById, getMatchesByTeamId, getMemberNickname, positionNames, deleteMatchResult, getTeamMembers } from '@/lib/supabase-api'
-import { createSampleMatchData } from '@/lib/utils'
 import { ArrowLeft, Edit, Trophy, Users, Trash2 } from 'lucide-react'
 
 export default function TeamMatchesPage() {
@@ -56,8 +55,8 @@ export default function TeamMatchesPage() {
         // 모든 멤버 ID에 대한 닉네임 수집
         const allMemberIds = new Set<string>()
         matchesData.forEach(match => {
-          match.team1.members.forEach(member => allMemberIds.add(member.memberId))
-          match.team2.members.forEach(member => allMemberIds.add(member.memberId))
+          match.team1.forEach(memberId => allMemberIds.add(memberId))
+          match.team2.forEach(memberId => allMemberIds.add(memberId))
         })
         
         // 닉네임 정보 로드
@@ -111,11 +110,7 @@ export default function TeamMatchesPage() {
     }
   }
 
-  const handleCreateSampleData = () => {
-    createSampleMatchData(teamId)
-    // 페이지 새로고침하여 새로운 데이터 로드
-    window.location.reload()
-  }
+  // Sample data creation function removed - createSampleMatchData no longer exists
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('ko-KR', {
@@ -128,22 +123,26 @@ export default function TeamMatchesPage() {
   }
 
   const getTeamScore = (team: any) => {
-    return team.members.reduce((total: number, member: any) => total + member.kills, 0)
+    return team.members ? team.members.reduce((total: number, member: any) => total + member.kills, 0) : 0
   }
 
-  const TeamPlayerTable = ({ team, isWinner, mvpMemberId }: { team: any, isWinner: boolean, mvpMemberId?: string }) => (
+  const TeamPlayerTable = ({ team, isWinner, mvpMemberId }: { 
+    team: any, 
+    isWinner: boolean, 
+    mvpMemberId?: string 
+  }) => (
     <div className={`p-3 rounded-lg ${isWinner ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
       <div className="space-y-2">
         {team.members.map((member: any, index: number) => {
           const isMVP = mvpMemberId === member.memberId
           return (
             <div key={index} className={`grid grid-cols-4 gap-3 text-sm py-1 ${isMVP ? 'bg-yellow-50 border border-yellow-200 rounded px-2' : ''}`}>
-              <div className="font-medium text-muted-foreground flex items-center gap-1">
-                {isMVP && <Trophy className="w-3 h-3 text-yellow-600" />}
+              <div className="font-medium text-muted-foreground">
                 {positionNames[member.position as keyof typeof positionNames]}
               </div>
-              <div className={`font-medium ${isMVP ? 'text-yellow-800 font-bold' : ''}`}>
+              <div className="font-medium flex items-center gap-1">
                 {memberNicknames[member.memberId] || `Player ${member.memberId}`}
+                {isMVP && <Trophy className="w-3 h-3 text-yellow-600" />}
               </div>
               <div className="text-blue-600 font-medium">
                 {member.champion}
@@ -208,14 +207,7 @@ export default function TeamMatchesPage() {
                 <div className="text-center text-muted-foreground">
                   <Trophy className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg mb-2">아직 경기 기록이 없습니다</p>
-                  <p className="text-sm mb-4">첫 번째 내전을 시작해보세요!</p>
-                  <Button 
-                    onClick={handleCreateSampleData}
-                    variant="outline"
-                    className="mt-2"
-                  >
-                    예시 데이터 생성하기
-                  </Button>
+                  <p className="text-sm">첫 번째 내전을 시작해보세요!</p>
                 </div>
               </CardContent>
             </Card>
@@ -228,12 +220,6 @@ export default function TeamMatchesPage() {
                       <CardTitle className="text-lg">{formatDate(match.createdAt)}</CardTitle>
                       <CardDescription className="flex items-center gap-2">
                         <span>{match.winner === 'team1' ? '블루팀 승리' : '레드팀 승리'}</span>
-                        {match.mvpMemberId && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                            <Trophy className="w-3 h-3" />
-                            MVP: {memberNicknames[match.mvpMemberId] || 'Unknown'}
-                          </span>
-                        )}
                       </CardDescription>
                     </div>
                     <div className="flex gap-2">
@@ -279,7 +265,11 @@ export default function TeamMatchesPage() {
                       <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                       블루팀 {match.winner === 'team1' && <span className="text-green-600 font-bold">(승리)</span>}
                     </div>
-                    <TeamPlayerTable team={match.team1} isWinner={match.winner === 'team1'} mvpMemberId={match.mvpMemberId} />
+                    <TeamPlayerTable 
+                      team={match.team1} 
+                      isWinner={match.winner === 'team1'} 
+                      mvpMemberId={match.winner === 'team1' ? (match as any).mvpMemberId : undefined} 
+                    />
                   </div>
 
                   {/* 레드팀 */}
@@ -288,7 +278,11 @@ export default function TeamMatchesPage() {
                       <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                       레드팀 {match.winner === 'team2' && <span className="text-green-600 font-bold">(승리)</span>}
                     </div>
-                    <TeamPlayerTable team={match.team2} isWinner={match.winner === 'team2'} mvpMemberId={match.mvpMemberId} />
+                    <TeamPlayerTable 
+                      team={match.team2} 
+                      isWinner={match.winner === 'team2'} 
+                      mvpMemberId={match.winner === 'team2' ? (match as any).mvpMemberId : undefined} 
+                    />
                   </div>
                 </CardContent>
               </Card>

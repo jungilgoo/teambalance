@@ -5,7 +5,7 @@ export interface User {
   name: string
   username?: string  // 게이머 닉네임 (선택사항, 3-20자, 영문/한글/숫자/_/- 허용)
   avatar?: string
-  provider: 'kakao' | 'naver' | 'google'
+  provider: 'email' | 'kakao' | 'naver' | 'google'  // ✅ 'email' 타입 추가
   createdAt: Date
 }
 
@@ -102,109 +102,55 @@ export interface ApiResponse<T> {
   message?: string
 }
 
-// 폼 데이터 타입들
-export interface LoginFormData {
-  provider: 'kakao' | 'naver' | 'google'
-}
-
-// 하이브리드 로그인 폼 데이터
-export interface HybridLoginFormData {
-  loginId: string      // 이메일 또는 닉네임
-  password: string
-}
-
-// 회원가입 폼 데이터 (닉네임 포함)
-export interface SignUpFormData {
-  email: string
-  password: string
-  name: string
-  username?: string    // 선택적 게이머 닉네임
-}
-
-export interface CreateTeamFormData {
-  name: string
-  description?: string
-  isPublic: boolean
-}
-
-// 팀 초대 관련 타입
+// 팀 초대 타입
 export interface TeamInvite {
   id: string
   teamId: string
   createdBy: string
   inviteCode: string
   expiresAt: Date
-  createdAt: Date
   maxUses?: number
   currentUses: number
   isActive: boolean
+  createdAt: Date
 }
 
-export interface InviteLink {
-  inviteCode: string
-  teamName: string
-  teamDescription?: string
-  inviterName: string
-  expiresAt: Date
-}
-
-export interface JoinTeamFormData {
-  teamName?: string
-  teamId?: string
-}
-
-export interface MemberProfileFormData {
-  nickname: string
-  tier: TierType
-  mainPosition: Position
-  subPositions: Position[] // 다중 부포지션
-}
-
-// 경기 및 세션 관련 타입
+// 세션 및 경기 관련 타입
 export interface Session {
   id: string
   teamId: string
   createdBy: string
-  selectedMembers: string[] // member IDs selected for session
-  participants: string[] // member IDs
-  team1: SessionTeam
-  team2: SessionTeam
-  balancingMethod: 'smart' | 'random'
-  status: 'preparing' | 'playing' | 'finished'
+  status: 'preparing' | 'in_progress' | 'completed' | 'waiting' | 'cancelled'
+  selectedMembers?: string[]
+  team1Members?: string[]
+  team2Members?: string[]
+  startedAt?: Date
+  completedAt?: Date
+  result?: {
+    winner: 'team1' | 'team2' | 'draw'
+    team1Score: number
+    team2Score: number
+    mvp?: string
+    notes?: string
+  }
   createdAt: Date
-}
-
-export interface SessionTeam {
-  members: SessionMember[]
-  color: 'blue' | 'red'
-}
-
-export interface SessionMember {
-  memberId: string
-  position: Position
-  nickname: string
-  champion?: string
-  kills?: number
-  deaths?: number
-  assists?: number
 }
 
 export interface Match {
   id: string
   sessionId: string
-  team1: MatchTeamResult
-  team2: MatchTeamResult
+  teamId: string
   winner: 'team1' | 'team2'
-  mvpMemberId?: string  // 승리팀 MVP 멤버 ID
+  team1: string[] // team1 멤버 ID 배열
+  team2: string[] // team2 멤버 ID 배열
   createdAt: Date
 }
 
-export interface MatchTeamResult {
-  members: MatchMemberResult[]
-}
-
-export interface MatchMemberResult {
-  memberId: string
+export interface MatchMember {
+  id: string
+  matchId: string
+  teamMemberId: string
+  teamSide: 'team1' | 'team2'
   position: Position
   champion: string
   kills: number
@@ -212,58 +158,215 @@ export interface MatchMemberResult {
   assists: number
 }
 
-// ============================================================================
-// 포지션 관련 유틸리티 클래스 및 함수들
-// ============================================================================
+// 경기 결과 분석용 타입
+export interface MatchMemberResult extends MatchMember {
+  memberId: string
+  nickname: string
+  tier: TierType
+  won: boolean
+  kda: number
+  scoreContribution: number
+}
 
-// 포지션 스킬 가중치 계산 함수 (주포지션/부포지션 동일)
-export const getPositionSkillWeight = (level: PositionLevel): number => {
-  const weights = {
-    main: 1.0,   // 100% (주포지션)
-    sub1: 1.0,   // 100% (부포지션도 동일)
-    sub2: 1.0,   // 100%
-    sub3: 1.0,   // 100%
-    sub4: 1.0    // 100%
+// 정렬 및 필터 타입
+export type SortField = 'name' | 'tier' | 'winRate' | 'joinedAt'
+export type SortOrder = 'asc' | 'desc'
+
+export interface TableSort {
+  field: SortField
+  order: SortOrder
+}
+
+// 멤버 필터 타입
+export interface MemberFilters {
+  position?: Position
+  tier?: string[]
+  status?: TeamMember['status'][]
+  searchQuery?: string
+}
+
+// 모달 상태 타입
+export interface ModalState {
+  isOpen: boolean
+  data?: any
+  onClose: () => void
+}
+
+// 폼 데이터 타입들
+export interface SignUpFormData {
+  email: string
+  password: string
+  confirmPassword: string
+  name: string
+  username?: string
+}
+
+export interface LoginFormData {
+  loginId: string
+  password: string
+  rememberMe: boolean
+}
+
+export interface CreateTeamFormData {
+  name: string
+  description: string
+  isPublic: boolean
+}
+
+export interface JoinTeamFormData {
+  nickname: string
+  tier: TierType
+  mainPosition: Position
+  subPositions: Position[]
+}
+
+export interface CreateSessionFormData {
+  selectedMembers: string[]
+}
+
+// 에러 타입
+export interface ApiError {
+  message: string
+  status?: number
+  code?: string
+  details?: any
+}
+
+// 통계 및 분석 관련 타입
+export interface TeamStats {
+  totalGames: number
+  totalWins: number
+  averageTierScore: number
+  mostPlayedPosition: Position
+  topPerformers: TeamMember[]
+  recentMatches: Match[]
+}
+
+export interface MemberPerformance {
+  memberId: string
+  nickname: string
+  gamesPlayed: number
+  winRate: number
+  averageKDA: number
+  favoriteChampions: string[]
+  positionPerformance: Record<Position, {
+    games: number
+    wins: number
+    averageKDA: number
+  }>
+}
+
+// 실시간 업데이트 관련 타입
+export interface RealtimeUpdate<T = any> {
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE'
+  new?: T
+  old?: T
+  table: string
+  commitTimestamp: string
+}
+
+// 페이지네이션 타입
+export interface Pagination {
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+}
+
+export interface PaginatedResponse<T> extends ApiResponse<T[]> {
+  pagination: Pagination
+}
+
+// 유틸리티 타입들
+export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
+export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>
+
+// 환경변수 타입
+export interface EnvironmentConfig {
+  supabaseUrl: string
+  supabaseAnonKey: string
+  nextAuthSecret: string
+  isDevelopment: boolean
+  isProduction: boolean
+}
+
+// 설정 타입
+export interface AppConfig {
+  teamMember: {
+    maxCount: number
+    minCount: number
   }
-  return weights[level] || 0
+  session: {
+    maxDuration: number // 시간 (hours)
+    autoCompleteAfter: number // 시간 (hours)
+  }
+  match: {
+    maxPlayersPerTeam: number
+    requiredPositions: Position[]
+  }
+  invite: {
+    defaultExpirationHours: number
+    maxUses: number
+  }
 }
 
-// TeamMember에서 포지션 정보 추출하는 헬퍼 함수들
-export const getMemberPositionPreferences = (member: TeamMember): PositionPreference[] => {
-  const preferences: PositionPreference[] = [
-    {
-      position: member.mainPosition,
-      level: 'main',
-      skillWeight: getPositionSkillWeight('main')
-    }
-  ]
-  
-  member.subPositions.forEach((position, index) => {
-    const level = `sub${index + 1}` as PositionLevel
-    preferences.push({
-      position,
-      level,
-      skillWeight: getPositionSkillWeight(level)
-    })
-  })
-  
-  return preferences
+// 게임 밸런싱 관련 타입
+export interface BalancingOptions {
+  prioritizePositions: boolean
+  considerTierScore: boolean
+  considerWinRate: boolean
+  allowPositionFlexibility: boolean
 }
 
-export const canMemberPlay = (member: TeamMember, position: Position): boolean => {
+export interface TeamBalanceResult {
+  team1: TeamMember[]
+  team2: TeamMember[]
+  balanceScore: number
+  scoreDifference: number
+  positionOptimal: boolean
+  explanation: string
+}
+
+// 알림 관련 타입
+export interface Notification {
+  id: string
+  userId: string
+  type: 'invite' | 'match_result' | 'team_update' | 'system'
+  title: string
+  message: string
+  isRead: boolean
+  createdAt: Date
+  data?: any // 알림과 관련된 추가 데이터
+}
+
+export interface NotificationSettings {
+  matchResults: boolean
+  teamInvites: boolean
+  systemUpdates: boolean
+  emailNotifications: boolean
+}
+
+// 팀 멤버 분석 및 밸런싱 유틸리티 함수들
+export function canMemberPlay(member: TeamMember, position: Position): boolean {
+  // 메인 포지션이거나 서브 포지션에 포함되어 있으면 플레이 가능
   return member.mainPosition === position || member.subPositions.includes(position)
 }
 
-export const getMemberSkillWeight = (member: TeamMember, position: Position): number => {
+export function getMemberSkillWeight(member: TeamMember, position: Position): number {
+  // 멤버의 기존 tierScore를 사용하거나, calculateTierScore로 계산
+  const baseTierScore = member.stats.tierScore
+  
+  // 메인 포지션이면 100%, 서브 포지션이면 80%
   if (member.mainPosition === position) {
-    return getPositionSkillWeight('main')
+    return baseTierScore
+  } else if (member.subPositions.includes(position)) {
+    return baseTierScore * 0.8
+  } else {
+    return baseTierScore * 0.5 // 할 수 없는 포지션은 50%
   }
-  
-  const subIndex = member.subPositions.indexOf(position)
-  if (subIndex >= 0) {
-    const level = `sub${subIndex + 1}` as PositionLevel
-    return getPositionSkillWeight(level)
-  }
-  
-  return 0 // 해당 포지션을 플레이할 수 없음
+}
+
+export function getMemberPositionPreferences(member: TeamMember): Position[] {
+  // 메인 포지션을 첫 번째로, 서브 포지션들을 그 뒤에
+  return [member.mainPosition, ...member.subPositions]
 }

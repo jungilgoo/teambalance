@@ -31,7 +31,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<UserSessio
     }
 
     // Supabase 세션 설정 및 검증
-    const supabase = createSupabaseServer()
+    const supabase = await createSupabaseServer()
     
     // 세션 토큰으로 사용자 정보 조회
     const { data: { user }, error: authError } = await supabase.auth.getUser(sessionToken)
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<UserSessio
       .from('profiles')
       .select('id, email, name, username')
       .eq('id', user.id)
-      .single()
+      .single() as { data: { id: string; email: string; name: string; username?: string } | null; error: any }
 
     if (profileError || !profile) {
       return NextResponse.json({

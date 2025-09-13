@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,11 +11,11 @@ import { TierSelect } from '@/components/ui/tier-select'
 import { PositionSelect } from '@/components/ui/position-select'
 import { MultiPositionSelect } from '@/components/ui/multi-position-select'
 import { getAuthState } from '@/lib/auth'
-import { InviteLink, TierType, Position, Team } from '@/lib/types'
+import { TeamInvite, TierType, Position, Team } from '@/lib/types'
 import { getTeamByInviteCode, joinTeamByInviteCode, getPublicTeams, searchPublicTeams, joinPublicTeam } from '@/lib/supabase-api'
 import { Users, Link, UserPlus, AlertCircle, CheckCircle, Clock, ArrowLeft, Search } from 'lucide-react'
 
-export default function JoinTeamPage() {
+function JoinTeamContent() {
   // 탭 관리
   const [activeTab, setActiveTab] = useState<'public' | 'invite'>('public')
   
@@ -30,7 +30,7 @@ export default function JoinTeamPage() {
   
   // 초대 코드 관련 상태
   const [inviteCode, setInviteCode] = useState('')
-  const [inviteInfo, setInviteInfo] = useState<InviteLink | null>(null)
+  const [inviteInfo, setInviteInfo] = useState<TeamInvite | null>(null)
   
   // 공개 팀 관련 상태
   const [publicTeams, setPublicTeams] = useState<Team[]>([])
@@ -59,6 +59,10 @@ export default function JoinTeamPage() {
         }
 
         console.log('인증됨:', authState.user.name)
+        
+        // 사용자의 글로벌 닉네임을 자동으로 설정
+        const userNickname = authState.user.username || authState.user.name
+        setNickname(userNickname)
         
         // URL에서 초대 코드 확인
         const codeFromUrl = searchParams.get('code')
@@ -164,15 +168,16 @@ export default function JoinTeamPage() {
           router.push('/dashboard')
         }, 2000)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('공개 팀 참가 실패:', error)
-      setError(error.message || '팀 참가에 실패했습니다.')
+      const errorMessage = error instanceof Error ? error.message : '팀 참가에 실패했습니다.'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleVerifyInvite = async (code?: string) => {
+  const handleVerifyInvite = useCallback(async (code?: string) => {
     const verifyCode = code || inviteCode
     if (!verifyCode.trim()) {
       setError('초대 코드를 입력해주세요.')
@@ -197,7 +202,7 @@ export default function JoinTeamPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [inviteCode])
 
   const handleJoinTeam = async () => {
     if (!inviteInfo || !nickname.trim()) {
@@ -229,14 +234,15 @@ export default function JoinTeamPage() {
       )
 
       if (success) {
-        setSuccess(`"${inviteInfo.teamName}" 팀에 성공적으로 참가했습니다!`)
+        setSuccess('팀에 성공적으로 참가했습니다!')
         setTimeout(() => {
           router.push('/dashboard')
         }, 2000)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('팀 참가 실패:', error)
-      setError(error.message || '팀 참가에 실패했습니다.')
+      const errorMessage = error instanceof Error ? error.message : '팀 참가에 실패했습니다.'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -432,7 +438,7 @@ export default function JoinTeamPage() {
                 <Card className="border-blue-200">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-blue-700">
-                      "{selectedTeam.name}" 팀 참가
+                      &ldquo;{selectedTeam.name}&rdquo; 팀 참가
                     </CardTitle>
                     <CardDescription>
                       팀에서 사용할 정보를 입력하세요
@@ -443,11 +449,14 @@ export default function JoinTeamPage() {
                       <Label htmlFor="nickname">닉네임 *</Label>
                       <Input
                         id="nickname"
-                        placeholder="팀에서 사용할 닉네임"
+                        placeholder="글로벌 닉네임이 자동 적용됩니다"
                         value={nickname}
-                        onChange={(e) => setNickname(e.target.value)}
-                        maxLength={20}
+                        readOnly
+                        className="bg-gray-50 dark:bg-gray-800 cursor-not-allowed"
                       />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        글로벌 닉네임을 변경하려면 <a href="/profile" className="text-blue-600 hover:underline">프로필 설정</a>에서 수정하세요
+                      </p>
                     </div>
 
                     <div>
@@ -543,23 +552,21 @@ export default function JoinTeamPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-blue-700">
                   <Users className="w-5 h-5" />
-                  {inviteInfo.teamName}
+                  팀 초대
                 </CardTitle>
-                {inviteInfo.teamDescription && (
-                  <CardDescription className="text-blue-600">
-                    {inviteInfo.teamDescription}
-                  </CardDescription>
-                )}
+                <CardDescription className="text-blue-600">
+                  팀 초대 코드를 통해 참가하세요.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="text-sm space-y-2">
                   <div className="flex items-center gap-2 text-blue-600">
                     <UserPlus className="w-4 h-4" />
-                    <span>{inviteInfo.inviterName}님의 초대</span>
+                    <span>팀장의 초대</span>
                   </div>
                   <div className="flex items-center gap-2 text-blue-600">
                     <Clock className="w-4 h-4" />
-                    <span>{formatExpiresAt(inviteInfo.expiresAt)}</span>
+                    <span>유효한 초대 코드</span>
                   </div>
                 </div>
                 
@@ -586,11 +593,14 @@ export default function JoinTeamPage() {
                   <Label htmlFor="nickname">닉네임 *</Label>
                   <Input
                     id="nickname"
-                    placeholder="팀에서 사용할 닉네임"
+                    placeholder="글로벌 닉네임이 자동 적용됩니다"
                     value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    maxLength={20}
+                    readOnly
+                    className="bg-gray-50 dark:bg-gray-800 cursor-not-allowed"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    글로벌 닉네임을 변경하려면 <a href="/profile" className="text-blue-600 hover:underline">프로필 설정</a>에서 수정하세요
+                  </p>
                 </div>
 
                 <div>
@@ -631,7 +641,7 @@ export default function JoinTeamPage() {
                   size="lg"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
-                  {isLoading ? '참가 중...' : `"${inviteInfo.teamName}" 팀 참가하기`}
+                  {isLoading ? '참가 중...' : '팀 참가하기'}
                 </Button>
               </CardContent>
             </Card>
@@ -641,5 +651,13 @@ export default function JoinTeamPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function JoinTeamPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <JoinTeamContent />
+    </Suspense>
   )
 }

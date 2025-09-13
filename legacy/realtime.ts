@@ -1,6 +1,6 @@
-import { createSupabaseBrowser } from './supabase'
+import { createSupabaseBrowser } from '../lib/supabase'
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
-import type { Database } from './database.types'
+import type { Database } from '../lib/database.types'
 
 const supabase = createSupabaseBrowser()
 
@@ -147,7 +147,7 @@ export const broadcastSessionStatus = (
   channel: RealtimeChannel,
   sessionId: string,
   status: 'preparing' | 'in_progress' | 'completed',
-  data?: any
+  data?: Record<string, unknown>
 ) => {
   return channel.send({
     type: 'broadcast',
@@ -161,6 +161,13 @@ export const broadcastSessionStatus = (
   })
 }
 
+interface TeamMember {
+  id: string
+  nickname: string
+  position?: string
+  [key: string]: unknown
+}
+
 // 팀 밸런싱 진행 상태 브로드캐스트
 export const broadcastBalancingProgress = (
   channel: RealtimeChannel,
@@ -169,8 +176,8 @@ export const broadcastBalancingProgress = (
     step: 'selecting' | 'balancing' | 'completed'
     selectedCount?: number
     totalCount?: number
-    team1?: any[]
-    team2?: any[]
+    team1?: TeamMember[]
+    team2?: TeamMember[]
   }
 ) => {
   return channel.send({
@@ -212,19 +219,19 @@ export const broadcastMatchProgress = (
 // 채널 생성 및 브로드캐스트 리스너 설정
 export const createSessionChannel = (
   sessionId: string,
-  onBroadcast?: (event: string, payload: any) => void
+  onBroadcast?: (event: string, payload: Record<string, unknown>) => void
 ) => {
   const channel = supabase.channel(`session_broadcast_${sessionId}`)
 
   if (onBroadcast) {
     channel
-      .on('broadcast', { event: 'session_status' }, ({ payload }) => {
+      .on('broadcast', { event: 'session_status' }, ({ payload }: { payload: Record<string, unknown> }) => {
         onBroadcast('session_status', payload)
       })
-      .on('broadcast', { event: 'balancing_progress' }, ({ payload }) => {
+      .on('broadcast', { event: 'balancing_progress' }, ({ payload }: { payload: Record<string, unknown> }) => {
         onBroadcast('balancing_progress', payload)
       })
-      .on('broadcast', { event: 'match_progress' }, ({ payload }) => {
+      .on('broadcast', { event: 'match_progress' }, ({ payload }: { payload: Record<string, unknown> }) => {
         onBroadcast('match_progress', payload)
       })
   }
@@ -265,7 +272,7 @@ export const useTeamMembersSubscription = (
       } else if (eventType === 'UPDATE' && newRecord) {
         callback([newRecord], 'UPDATE')
       } else if (eventType === 'DELETE' && oldRecord) {
-        callback([oldRecord], 'DELETE')
+        callback([oldRecord as TeamMemberRow], 'DELETE')
       }
     })
 
@@ -323,13 +330,13 @@ export const monitorRealtimeStatus = (
   const statusChannel = supabase.channel('realtime-status')
   
   statusChannel
-    .on('system', {}, (payload) => {
+    .on('system', {}, (payload: Record<string, unknown>) => {
       console.log('Realtime system event:', payload)
       // 연결 상태 변화 감지 로직
     })
-    .subscribe((status) => {
+    .subscribe((status: string) => {
       console.log('Realtime connection status:', status)
-      onStatusChange(status)
+      onStatusChange(status as any)
     })
 
   return statusChannel
@@ -346,7 +353,7 @@ export const notifyTeamMembers = (
     type: 'session_created' | 'match_completed' | 'member_joined' | 'member_left'
     title: string
     message: string
-    data?: any
+    data?: Record<string, unknown>
   }
 ) => {
   const channel = supabase.channel(`team_notifications_${teamId}`)
@@ -368,7 +375,7 @@ export const logTeamActivity = (
     type: 'session' | 'match' | 'member' | 'invite'
     action: string
     userId: string
-    data?: any
+    data?: Record<string, unknown>
   }
 ) => {
   const channel = supabase.channel(`team_activity_${teamId}`)
@@ -389,23 +396,27 @@ export const trackOnlineUsers = (
   userId: string,
   userInfo: { name: string, avatar?: string }
 ) => {
-  const channel = supabase.channel(`team_presence_${teamId}`)
+  const channel: any = (supabase as any).channel(`team_presence_${teamId}`)
   
-  return channel
+  channel
     .on('presence', { event: 'sync' }, () => {
       const presenceState = channel.presenceState()
       console.log('Online users:', presenceState)
     })
-    .on('presence', { event: 'join' }, ({ newPresences }) => {
+    .on('presence', { event: 'join' }, ({ newPresences }: { newPresences: Record<string, unknown> }) => {
       console.log('User joined:', newPresences)
     })
-    .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+    .on('presence', { event: 'leave' }, ({ leftPresences }: { leftPresences: Record<string, unknown> }) => {
       console.log('User left:', leftPresences)
     })
-    .track({
-      userId,
-      ...userInfo,
-      online_at: new Date().toISOString()
-    })
     .subscribe()
+
+  // 구독 후 track
+  channel.track({
+    userId,
+    ...userInfo,
+    online_at: new Date().toISOString()
+  })
+
+  return channel
 }

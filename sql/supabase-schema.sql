@@ -8,7 +8,7 @@ CREATE TABLE profiles (
     email TEXT NOT NULL,
     name TEXT NOT NULL,
     avatar_url TEXT,
-    provider TEXT CHECK (provider IN ('kakao', 'naver', 'google')) NOT NULL,
+    provider TEXT CHECK (provider IN ('email', 'kakao', 'naver', 'google')) NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

@@ -11,8 +11,7 @@ import { User, AuthState } from '@/lib/types'
 import { 
   initializeAuth, 
   onAuthStateChange, 
-  getAuthStateSync,
-  type AuthState as LibAuthState
+  getAuthStateSync
 } from '@/lib/auth'
 import { 
   initializeCookieAuth,
@@ -43,8 +42,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshAuth = async () => {
     try {
       setIsLoading(true)
-      const newState = await initializeAuth()
-      setAuthState(newState)
+      const { checkCookieAuth } = await import('@/lib/auth-cookie')
+      const newState = await checkCookieAuth()
+      setAuthState({
+        isAuthenticated: newState.isAuthenticated,
+        user: newState.user,
+        loading: false
+      })
     } catch (error) {
       console.error('인증 상태 새로고침 오류:', error)
       setAuthState({ isAuthenticated: false, user: null, loading: false })
@@ -57,32 +61,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // HTTPOnly 쿠키 시스템 초기화
-        await initializeCookieAuth()
+        // 쿠키 기반 인증 상태만 확인 (중복 제거)
+        const { checkCookieAuth } = await import('@/lib/auth-cookie')
+        const initialState = await checkCookieAuth()
         
-        // 인증 상태 초기화
-        const initialState = await initializeAuth()
-        setAuthState(initialState)
+        setAuthState({
+          isAuthenticated: initialState.isAuthenticated,
+          user: initialState.user,
+          loading: false
+        })
         
-        // 쿠키 기반 인증 상태 변경 리스너 등록
+        // 쿠키 기반 인증 상태 변경 리스너만 등록 (단순화)
         const unsubscribeCookie = subscribeCookieAuthState((cookieState: SecureAuthState) => {
-          const newAuthState: AuthState = {
+          setAuthState({
             isAuthenticated: cookieState.isAuthenticated,
             user: cookieState.user,
             loading: cookieState.loading
-          }
-          setAuthState(newAuthState)
-        })
-        
-        // Supabase 인증 상태 변경 리스너 등록 (백업)
-        const { data: { subscription } } = onAuthStateChange((supabaseState: LibAuthState) => {
-          // 쿠키 상태와 동기화
-          setAuthState(supabaseState)
+          })
         })
 
         return () => {
           unsubscribeCookie()
-          subscription?.unsubscribe()
         }
       } catch (error) {
         console.error('인증 초기화 오류:', error)

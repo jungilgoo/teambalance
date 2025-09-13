@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,7 +8,7 @@ import { updatePassword } from '@/lib/auth'
 import { createSupabaseBrowser } from '@/lib/supabase'
 import { Shield, Gamepad2, CheckCircle } from 'lucide-react'
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -66,9 +66,10 @@ export default function ResetPasswordPage() {
       setTimeout(() => {
         router.push('/login')
       }, 3000)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('비밀번호 변경 오류:', error)
-      setError(error.message || '비밀번호 변경에 실패했습니다.')
+      const errorMessage = error instanceof Error ? error.message : '비밀번호 변경에 실패했습니다.'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -176,5 +177,13 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
   )
 }

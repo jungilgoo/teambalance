@@ -48,7 +48,7 @@ export default function InviteMemberModal({ teamId, currentUserId, teamName, isT
     setIsCreating(true)
     try {
       const maxUsesNumber = maxUses ? parseInt(maxUses) : undefined
-      const invite = await createTeamInvite(teamId, currentUserId, maxUsesNumber, expiresInHours)
+      const invite = await (createTeamInvite as any)(teamId, currentUserId, maxUsesNumber, expiresInHours)
       setNewInvite(invite)
       loadExistingInvites()
     } catch (error) {

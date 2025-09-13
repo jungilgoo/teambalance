@@ -167,7 +167,7 @@ export const calculateWinRate = (wins: number, losses: number): number => {
 }
 
 // 티어 점수 계산 함수 (팀 밸런싱용 - CLAUDE.md 기준)
-export const calculateTierScore = (tier: TierType, stats: { totalWins: number, totalLosses: number, mainPositionGames: number, mainPositionWins: number, subPositionGames: number, subPositionWins: number }): number => {
+export const calculateTierScore = (tier: TierType, stats?: { totalWins: number, totalLosses: number, mainPositionGames: number, mainPositionWins: number, subPositionGames: number, subPositionWins: number }): number => {
   // 기본 티어 점수 매핑
   const tierScoreMap: Record<TierType, number> = {
     iron_iv: 400, iron_iii: 500, iron_ii: 600, iron_i: 700,
@@ -183,6 +183,12 @@ export const calculateTierScore = (tier: TierType, stats: { totalWins: number, t
   }
 
   const baseTierScore = tierScoreMap[tier] || 1000
+  
+  // stats가 없는 경우 기본 티어 점수 반환
+  if (!stats) {
+    return baseTierScore
+  }
+  
   const totalGames = stats.totalWins + stats.totalLosses
   const winRate = totalGames > 0 ? stats.totalWins / totalGames : 0
 
@@ -254,21 +260,32 @@ export const calculateMVPScore = (
 
 // 경기에서 승리팀 MVP 계산
 export const calculateMatchMVP = (match: Match): string | null => {
+  // winner가 null이면 MVP 없음
+  if (!match.winner) {
+    return null
+  }
+  
   const winningTeam = match.winner === 'team1' ? match.team1 : match.team2
-  const teamTotalKills = winningTeam.members.reduce((sum, member) => 
-    sum + member.kills, 0
+  
+  // null safety 체크
+  if (!winningTeam || !(winningTeam as any).members || (winningTeam as any).members.length === 0) {
+    return null
+  }
+  
+  const teamTotalKills = (winningTeam as any).members.reduce((sum: any, member: any) => 
+    sum + (member?.kills || 0), 0
   )
   
   // 킬이 없으면 MVP 없음
   if (teamTotalKills === 0) return null
   
   // 승리팀 멤버들의 MVP 점수 계산
-  const mvpCandidate = winningTeam.members
-    .map(member => ({
+  const mvpCandidate = (winningTeam as any).members
+    .map((member: any) => ({
       ...member,
       mvpScore: calculateMVPScore(member, teamTotalKills)
     }))
-    .sort((a, b) => b.mvpScore - a.mvpScore)[0]
+    .sort((a: any, b: any) => b.mvpScore - a.mvpScore)[0]
     
   return mvpCandidate.memberId
 }

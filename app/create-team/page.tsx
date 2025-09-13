@@ -97,9 +97,10 @@ export default function CreateTeamPage() {
       
       alert(`"${data.name}" 팀이 생성되었습니다!`)
       router.push(`/team/${newTeam.id}`)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('팀 생성 실패:', error)
-      alert(`팀 생성에 실패했습니다: ${error.message || '알 수 없는 오류'}`)
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류'
+      alert(`팀 생성에 실패했습니다: ${errorMessage}`)
     } finally {
       setIsLoading(false)
     }

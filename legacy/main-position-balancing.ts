@@ -1,5 +1,5 @@
-import { Position, TeamMember } from './types'
-import { calculateMemberTierScore } from './stats'
+import { Position, TeamMember } from '../lib/types'
+import { calculateMemberTierScore } from '../lib/stats'
 
 // 포지션별 그룹 정보
 export interface PositionGroup {
@@ -38,7 +38,7 @@ export function groupByMainPosition(members: TeamMember[]): Map<Position, Positi
     
     // 부포지션으로 가능한 선수들 (주포지션 제외)
     const subPositionMembers = members.filter(m => 
-      m.mainPosition !== position && m.subPositions.includes(position)
+      m.mainPosition !== position && m.subPositions && m.subPositions.includes(position)
     )
 
     // 평균 티어 점수 계산 (주포지션 선수들 기준)
@@ -205,7 +205,7 @@ export function fillMissingPositions(
     
     if (needsTeam1 || needsTeam2) {
       // 부포지션으로 가능한 미사용 선수들 찾기
-      const availableMembers = unusedMembers.filter(m => m.subPositions.includes(position))
+      const availableMembers = unusedMembers.filter(m => m.subPositions && m.subPositions.includes(position))
       
       if (availableMembers.length === 0) {
         console.warn(`${position} 포지션을 채울 선수가 없습니다.`)

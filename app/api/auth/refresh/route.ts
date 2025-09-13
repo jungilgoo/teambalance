@@ -25,7 +25,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RefreshRe
     }
 
     // Supabase 토큰 갱신
-    const supabase = createSupabaseServer()
+    const supabase = await createSupabaseServer()
     const { data, error } = await supabase.auth.refreshSession({
       refresh_token: refreshToken
     })

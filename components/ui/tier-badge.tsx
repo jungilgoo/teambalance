@@ -17,6 +17,8 @@ export function TierBadge({ tier, className, size = 'md' }: TierBadgeProps) {
 
   return (
     <span
+      data-testid={`tier-badge-${tier}`}
+      data-size={size}
       className={cn(
         'inline-flex items-center rounded-md border',
         getTierColor(tier),

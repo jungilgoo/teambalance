@@ -1,14 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { hybridLogin, signUp, resetPassword } from '@/lib/auth'
 import { validateUsername, suggestUsernames, checkUsernameExists } from '@/lib/supabase-api'
+import { useCallback, useMemo } from 'react'
 import { Shield, Gamepad2, Mail } from 'lucide-react'
+import LoginForm from '@/components/auth/LoginForm'
+import SignUpForm from '@/components/auth/SignUpForm'
+import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm'
 
-export default function LoginPage() {
+function LoginContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [loginId, setLoginId] = useState('') // 이메일 또는 닉네임
   const [email, setEmail] = useState('')
@@ -27,13 +31,13 @@ export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // 닉네임 실시간 검증
-  const handleUsernameChange = async (newUsername: string) => {
+  // 닉네임 실시간 검증 (회원가입 모드에서만 동작) - 메모이제이션
+  const handleUsernameChange = useCallback(async (newUsername: string) => {
     setUsername(newUsername)
     setUsernameError('')
     setUsernameSuggestions([])
     
-    if (!newUsername) return
+    if (!newUsername || !isSignUp) return // 로그인 모드에서는 검증하지 않음
     
     // 유효성 검사
     const validation = validateUsername(newUsername)
@@ -42,18 +46,28 @@ export default function LoginPage() {
       return
     }
     
-    // 중복 검사 (디바운싱)
+    // 중복 검사 (디바운싱 시간 증가)
     setIsCheckingUsername(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 500)) // 500ms 디바운싱
+      await new Promise(resolve => setTimeout(resolve, 1000)) // 1000ms 디바운싱으로 증가
+      
+      // 회원가입 모드가 아니라면 검증 중단
+      if (!isSignUp) {
+        setIsCheckingUsername(false)
+        return
+      }
       
       const exists = await checkUsernameExists(newUsername)
       if (exists) {
         setUsernameError('이미 사용 중인 닉네임입니다.')
         
-        // 대안 제안
-        const suggestions = await suggestUsernames(newUsername)
-        setUsernameSuggestions(suggestions)
+        // 대안 제안 (lazy loading)
+        setTimeout(async () => {
+          if (isSignUp) {
+            const suggestions = await suggestUsernames(newUsername)
+            setUsernameSuggestions(suggestions)
+          }
+        }, 500)
       }
     } catch (error) {
       console.error('닉네임 검증 오류:', error)
@@ -61,10 +75,10 @@ export default function LoginPage() {
     } finally {
       setIsCheckingUsername(false)
     }
-  }
+  }, [isSignUp])
 
 
-  const handleForgotPassword = async () => {
+  const handleForgotPassword = useCallback(async () => {
     setIsLoading(true)
     try {
       if (!resetEmail) {
@@ -76,15 +90,16 @@ export default function LoginPage() {
       alert('비밀번호 재설정 이메일을 발송했습니다. 이메일을 확인해주세요.')
       setIsForgotPassword(false)
       setResetEmail('')
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('비밀번호 재설정 오류:', error)
-      alert(error.message || '비밀번호 재설정 요청에 실패했습니다.')
+      const errorMessage = error instanceof Error ? error.message : '비밀번호 재설정 요청에 실패했습니다.'
+      alert(errorMessage)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [resetEmail])
 
-  const handleAuth = async () => {
+  const handleAuth = useCallback(async () => {
     setIsLoading(true)
     try {
       if (isSignUp) {
@@ -99,7 +114,7 @@ export default function LoginPage() {
           return
         }
 
-        await signUp(email, password, name, username || undefined)
+        await signUp(email, password, name, username || undefined, 'email')
         alert('회원가입이 완료되었습니다! 로그인해보세요.')
         setIsSignUp(false)
         
@@ -121,13 +136,41 @@ export default function LoginPage() {
         const redirectTo = searchParams.get('redirect') || '/dashboard'
         router.push(redirectTo)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('인증 실패:', error)
-      alert(error.message || '인증에 실패했습니다.')
+      const errorMessage = error instanceof Error ? error.message : '인증에 실패했습니다.'
+      alert(errorMessage)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [isSignUp, email, password, name, username, usernameError, loginId, router, searchParams])
+
+  // 모드 전환 함수 메모이제이션
+  const toggleMode = useCallback(() => {
+    setIsSignUp(!isSignUp)
+    // 모드 전환 시 닉네임 관련 상태 초기화
+    setUsername('')
+    setUsernameError('')
+    setUsernameSuggestions([])
+    setIsCheckingUsername(false)
+  }, [isSignUp])
+
+  // 닉네임 제안 선택 함수 메모이제이션
+  const selectSuggestion = useCallback((suggestion: string) => {
+    setUsername(suggestion)
+    setUsernameError('')
+    setUsernameSuggestions([])
+  }, [])
+
+  // 현재 모드에 따른 제목과 설명 메모이제이션
+  const modeContent = useMemo(() => ({
+    title: isForgotPassword ? '비밀번호 찾기' : isSignUp ? '회원가입' : '로그인',
+    description: isForgotPassword 
+      ? '가입 시 사용한 이메일을 입력하세요' 
+      : isSignUp 
+      ? '새 계정을 만드세요' 
+      : '이메일 또는 닉네임으로 로그인하세요'
+  }), [isSignUp, isForgotPassword])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -152,174 +195,50 @@ export default function LoginPage() {
             <div className="space-y-4 mb-6">
               <div className="mb-6">
                 <h2 className="text-xl font-semibold text-center">
-                  {isForgotPassword ? '비밀번호 찾기' : isSignUp ? '회원가입' : '로그인'}
+                  {modeContent.title}
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-1">
-                  {isForgotPassword 
-                    ? '가입 시 사용한 이메일을 입력하세요' 
-                    : isSignUp 
-                    ? '새 계정을 만드세요' 
-                    : '이메일 또는 닉네임으로 로그인하세요'
-                  }
+                  {modeContent.description}
                 </p>
               </div>
 
               {isForgotPassword ? (
-                <>
-                  {/* 비밀번호 찾기 폼 */}
-                  <Input
-                    type="email"
-                    placeholder="가입 시 사용한 이메일"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    className="h-12"
-                    required
-                  />
-
-                  <Button
-                    onClick={handleForgotPassword}
-                    disabled={isLoading}
-                    className="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {isLoading ? '발송 중...' : '재설정 이메일 발송'}
-                  </Button>
-
-                  <div className="text-center">
-                    <button
-                      onClick={() => setIsForgotPassword(false)}
-                      className="text-sm text-blue-600 hover:text-blue-700"
-                    >
-                      로그인으로 돌아가기
-                    </button>
-                  </div>
-                </>
+                <ForgotPasswordForm
+                  resetEmail={resetEmail}
+                  isLoading={isLoading}
+                  onEmailChange={setResetEmail}
+                  onSubmit={handleForgotPassword}
+                  onBack={() => setIsForgotPassword(false)}
+                />
               ) : isSignUp ? (
-                <>
-                  {/* 회원가입 폼 */}
-                  <Input
-                    type="text"
-                    placeholder="이름 (실명)"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-12"
-                    required
-                  />
-                  
-                  <Input
-                    type="email"
-                    placeholder="이메일"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="h-12"
-                    required
-                  />
-
-                  {/* 닉네임 입력 (선택사항) */}
-                  <div className="space-y-2">
-                    <Input
-                      type="text"
-                      placeholder="게이머 닉네임 (선택사항, 2-20자)"
-                      value={username}
-                      onChange={(e) => handleUsernameChange(e.target.value)}
-                      className={`h-12 ${usernameError ? 'border-red-500' : username && !isCheckingUsername && !usernameError ? 'border-green-500' : ''}`}
-                    />
-                    
-                    {isCheckingUsername && (
-                      <p className="text-sm text-blue-600 dark:text-blue-400">
-                        닉네임 확인 중...
-                      </p>
-                    )}
-                    
-                    {usernameError && (
-                      <p className="text-sm text-red-600 dark:text-red-400">
-                        {usernameError}
-                      </p>
-                    )}
-                    
-                    {username && !isCheckingUsername && !usernameError && (
-                      <p className="text-sm text-green-600 dark:text-green-400">
-                        사용 가능한 닉네임입니다!
-                      </p>
-                    )}
-
-                    {/* 닉네임 추천 */}
-                    {usernameSuggestions.length > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-xs text-gray-500">추천 닉네임:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {usernameSuggestions.map((suggestion) => (
-                            <button
-                              key={suggestion}
-                              onClick={() => {
-                                setUsername(suggestion)
-                                setUsernameError('')
-                                setUsernameSuggestions([])
-                              }}
-                              className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 rounded-md transition-colors"
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      닉네임은 나중에 설정할 수도 있습니다.
-                    </p>
-                  </div>
-                </>
+                <SignUpForm
+                  name={name}
+                  email={email}
+                  password={password}
+                  username={username}
+                  usernameError={usernameError}
+                  usernameSuggestions={usernameSuggestions}
+                  isCheckingUsername={isCheckingUsername}
+                  isLoading={isLoading}
+                  onNameChange={setName}
+                  onEmailChange={setEmail}
+                  onPasswordChange={setPassword}
+                  onUsernameChange={handleUsernameChange}
+                  onSubmit={handleAuth}
+                  onToggleMode={toggleMode}
+                  onSelectSuggestion={selectSuggestion}
+                />
               ) : (
-                <>
-                  {/* 로그인 폼 */}
-                  <Input
-                    type="text"
-                    placeholder="이메일 또는 닉네임"
-                    value={loginId}
-                    onChange={(e) => setLoginId(e.target.value)}
-                    className="h-12"
-                    required
-                  />
-                </>
-              )}
-              
-              {!isForgotPassword && (
-                <>
-                  <Input
-                    type="password"
-                    placeholder="비밀번호 (6자 이상)"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-12"
-                    required
-                  />
-
-                  <Button
-                    onClick={handleAuth}
-                    disabled={isLoading || (isSignUp && username && !!usernameError)}
-                    className="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {isLoading ? '처리 중...' : (isSignUp ? '회원가입' : '로그인')}
-                  </Button>
-
-                  <div className="text-center space-y-2">
-                    <button
-                      onClick={() => setIsSignUp(!isSignUp)}
-                      className="text-sm text-blue-600 hover:text-blue-700 block w-full"
-                    >
-                      {isSignUp ? '이미 계정이 있으신가요? 로그인' : '계정이 없으신가요? 회원가입'}
-                    </button>
-                    
-                    {!isSignUp && (
-                      <button
-                        onClick={() => setIsForgotPassword(true)}
-                        className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                      >
-                        비밀번호를 잊으셨나요?
-                      </button>
-                    )}
-                  </div>
-                </>
+                <LoginForm
+                  loginId={loginId}
+                  password={password}
+                  isLoading={isLoading}
+                  onLoginIdChange={setLoginId}
+                  onPasswordChange={setPassword}
+                  onSubmit={handleAuth}
+                  onToggleMode={toggleMode}
+                  onForgotPassword={() => setIsForgotPassword(true)}
+                />
               )}
 
             </div>
@@ -350,5 +269,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   )
 }

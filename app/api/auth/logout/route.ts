@@ -20,7 +20,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<LogoutRes
     
     if (sessionToken) {
       // Supabase에서 세션 무효화
-      const supabase = createSupabaseServer()
+      const supabase = await createSupabaseServer()
       await supabase.auth.signOut()
     }
 

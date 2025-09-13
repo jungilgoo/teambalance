@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { getAuthState } from '@/lib/auth'
 import { Team, TeamMember, User } from '@/lib/types'
-import { getTeamById, getTeamMembers, getUserById, positionNames, getMemberMVPCount } from '@/lib/supabase-api'
+import { getTeamById, getTeamMembers, getUserById, positionNames } from '@/lib/supabase-api'
+import { getMemberMVPCount } from '@/lib/api/sessions'
 import { calculateMemberRankings, MemberRanking } from '@/lib/stats'
 import { TierBadge } from '@/components/ui/tier-badge'
 import { 
@@ -190,7 +191,7 @@ export default function TeamStatsPage() {
                             <div>
                               <div className="font-medium">{member.nickname}</div>
                               <div className="text-sm text-muted-foreground">
-                                {member.user?.name}
+                                {member.user?.username || member.user?.name}
                               </div>
                             </div>
                           </TableCell>

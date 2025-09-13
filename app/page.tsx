@@ -2,42 +2,27 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { getAuthState } from '@/lib/auth'
+import { useAuth } from '@/components/providers/AuthProvider'
 
 export default function Home() {
   const router = useRouter()
+  const { authState, isLoading } = useAuth()
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        console.log('메인 페이지: 인증 상태 확인 시작')
-        const authState = await getAuthState()
-        console.log('메인 페이지: 인증 상태 결과', authState)
-        
-        if (authState.isAuthenticated) {
-          console.log('메인 페이지: 인증됨, 대시보드로 이동')
-          router.push('/dashboard')
-        } else {
-          console.log('메인 페이지: 인증 안됨, 로그인으로 이동')
-          router.push('/login')
-        }
-      } catch (error) {
-        console.error('메인 페이지: 인증 확인 오류:', error)
-        router.push('/login')
+    // 초기 로딩이 완료되면 즉시 리다이렉션
+    if (!isLoading) {
+      if (authState.isAuthenticated) {
+        router.replace('/dashboard')
+      } else {
+        router.replace('/login')
       }
     }
+  }, [authState.isAuthenticated, isLoading, router])
 
-    // 약간의 지연 후 실행 (페이지 로드 완료 후)
-    const timer = setTimeout(checkAuth, 100)
-    return () => clearTimeout(timer)
-  }, [router])
-
+  // 최소한의 로딩 UI만 표시
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">롤 내전 매니저</h1>
-        <p className="text-muted-foreground">로딩 중...</p>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
     </div>
   )
 }

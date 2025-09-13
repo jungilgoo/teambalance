@@ -1,5 +1,4 @@
 import { User, AuthState } from './types'
-import { createSupabaseBrowser } from './supabase'
 import { 
   cookieLogin,
   hybridCookieLogin, 
@@ -12,19 +11,38 @@ import {
   type SecureAuthState
 } from './auth-cookie'
 
-// Supabase 클라이언트
-const supabase = createSupabaseBrowser()
+// Supabase 클라이언트는 필요할 때만 동적 import로 사용
+// 다중 인스턴스 방지
+
+// Supabase 에러 타입 정의
+interface SupabaseError {
+  message: string
+  status?: number
+  code?: string
+}
+
+// Supabase Profile 타입 정의
+interface SupabaseProfile {
+  id: string
+  email: string
+  name: string
+  username?: string
+  avatar_url?: string
+  provider: string
+  created_at: string
+}
 
 // 인증 에러 메시지 처리 함수
-const getAuthErrorMessage = (error: any): string => {
-  if (error.message.includes('Invalid login credentials')) {
+const getAuthErrorMessage = (error: SupabaseError | Error | unknown): string => {
+  const errorMessage = error instanceof Error ? error.message : String(error)
+  if (errorMessage.includes('Invalid login credentials')) {
     return '로그인 정보가 일치하지 않습니다.'
-  } else if (error.message.includes('Email not confirmed')) {
+  } else if (errorMessage.includes('Email not confirmed')) {
     return '계정 활성화가 필요합니다. 잠시 후 다시 시도해주세요.'
-  } else if (error.message.includes('Email rate limit exceeded')) {
+  } else if (errorMessage.includes('Email rate limit exceeded')) {
     return '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.'
-  } else if (error.message.includes('존재하지 않는')) {
-    return error.message
+  } else if (errorMessage.includes('존재하지 않는')) {
+    return errorMessage
   } else {
     return '로그인에 실패했습니다.'
   }
@@ -79,19 +97,22 @@ const saveAuthToStorage = (authState: AuthState) => {
 }
 
 // Profile 데이터를 User 타입으로 변환하는 헬퍼 함수
-const mapProfileToUser = (profile: any): User => ({
+const mapProfileToUser = (profile: SupabaseProfile): User => ({
   id: profile.id,
   email: profile.email,
   name: profile.name,
   username: profile.username || undefined,
   avatar: profile.avatar_url || undefined,
-  provider: profile.provider as 'kakao' | 'naver' | 'google',
+  provider: profile.provider as 'email' | 'kakao' | 'naver' | 'google',
   createdAt: new Date(profile.created_at)
 })
 
 // 현재 사용자 프로필 가져오기
 const fetchUserProfile = async (userId: string): Promise<User | null> => {
   try {
+    const { createSupabaseBrowser } = await import('./supabase')
+    const supabase = createSupabaseBrowser()
+    
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
@@ -162,7 +183,7 @@ export const emailLogin = async (email: string, password: string, rememberMe: bo
     saveAuthToStorage(authStateCache)
 
     return result.user
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('이메일 로그인 오류:', error)
     authStateCache = { isAuthenticated: false, user: null, loading: false }
     throw error
@@ -189,14 +210,14 @@ export const hybridLogin = async (loginId: string, password: string, rememberMe:
     saveAuthToStorage(authStateCache)
 
     return result.user
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('하이브리드 로그인 오류:', error)
     authStateCache = { isAuthenticated: false, user: null, loading: false }
     throw error
   }
 }
 
-// 회원가입 (이메일, 닉네임 지원)
+// 회원가입 (이메일, 닉네임 지원) - 강화된 provider 처리
 export const signUp = async (
   email: string, 
   password: string, 
@@ -205,6 +226,8 @@ export const signUp = async (
   provider: 'email' | 'kakao' | 'naver' | 'google' = 'email'
 ): Promise<User> => {
   try {
+    console.log(`🔍 회원가입 시작 - Email: ${email}, Provider: ${provider}`)
+    
     // 닉네임 유효성 및 중복 검사
     if (username) {
       const { validateUsername, checkUsernameExists } = await import('./supabase-api')
@@ -220,60 +243,118 @@ export const signUp = async (
       }
     }
 
-    // 이메일 중복 검사
-    const { checkEmailExists } = await import('./supabase-api')
-    const emailExists = await checkEmailExists(email)
-    if (emailExists) {
-      throw new Error('이미 사용 중인 이메일입니다.')
-    }
+    // 이메일 중복 검사는 Supabase Auth에서 자동으로 처리됨
 
     // Supabase Auth로 회원가입
-    const { data, error } = await supabase.auth.signUp({
+    const { createSupabaseBrowser } = await import('./supabase')
+    const supabase = createSupabaseBrowser()
+    
+    // 강화된 메타데이터로 provider 값 명시적 전달
+    const signUpData = {
       email,
       password,
       options: {
         data: {
           name,
-          provider
+          provider,  // 메타데이터에 provider 포함
+          full_name: name,  // Supabase 표준 필드 추가
+          signup_provider: provider  // 백업 필드
         }
       }
+    }
+    
+    console.log(`📤 Supabase signUp 요청:`, {
+      email,
+      metadata: signUpData.options.data
     })
 
+    const { data, error } = await supabase.auth.signUp(signUpData)
+
     if (error) {
-      throw new Error(`회원가입 실패: ${error.message}`)
+      console.error(`❌ Supabase Auth 오류:`, error)
+      // 더 사용자 친화적인 오류 메시지 제공
+      if (error.message.includes('already registered') || 
+          error.message.includes('User already registered')) {
+        throw new Error('이미 가입된 이메일입니다. 로그인을 시도해보세요.')
+      } else if (error.message.includes('Password should be at least')) {
+        throw new Error('비밀번호는 최소 6자 이상이어야 합니다.')
+      } else if (error.message.includes('Invalid email')) {
+        throw new Error('유효하지 않은 이메일 형식입니다.')
+      } else if (error.message.includes('Signup is disabled')) {
+        throw new Error('현재 회원가입이 비활성화되어 있습니다. 관리자에게 문의하세요.')
+      } else {
+        throw new Error(`회원가입 실패: ${error.message}`)
+      }
     }
 
     if (!data.user) {
       throw new Error('회원가입은 성공했지만 사용자 정보를 가져올 수 없습니다.')
     }
 
-    // 프로필 수동 생성 (닉네임 포함)
-    const profileData: any = {
+    console.log(`✅ Supabase Auth 성공. 사용자 ID: ${data.user.id}`)
+    console.log(`📝 사용자 메타데이터:`, data.user.user_metadata)
+
+    // 강화된 프로필 생성 로직 - 트리거 비활성화 후 수동 생성
+    console.log(`🔧 수동 프로필 생성 시작...`)
+    
+    // 트리거에 의존하지 않고 직접 프로필 생성
+    // PostgreSQL 컬럼 순서에 맞게 구성: id, email, name, avatar_url, provider, created_at, username
+    const profileData = {
       id: data.user.id,
-      email,
-      name,
-      provider
+      email: email,
+      name: name,
+      avatar_url: null,
+      provider: provider,  // 명시적 provider 설정 (정확한 위치)
+      created_at: new Date().toISOString(),  // 명시적으로 시간 설정
+      username: username || null  // 마지막에 위치 (Migration으로 추가됨)
     }
+    
+    console.log(`📤 프로필 INSERT 데이터:`, profileData)
 
-    // 닉네임이 제공된 경우에만 추가
-    if (username) {
-      profileData.username = username
-    }
-
-    const { error: profileError } = await supabase
+    // 명시적 컬럼 지정으로 매핑 오류 방지
+    const { data: insertedProfile, error: profileError } = await (supabase as any)
       .from('profiles')
-      .insert(profileData)
+      .upsert(profileData, { 
+        onConflict: 'id',  // id 충돌 시 업데이트
+        ignoreDuplicates: false  // 중복 무시 안함
+      })
+      .select('id, email, name, avatar_url, provider, created_at, username')  // 명시적 컬럼 순서
+      .single()
 
     if (profileError) {
-      console.error('프로필 생성 오류:', profileError)
-      throw new Error(`프로필 생성에 실패했습니다: ${profileError.message}`)
+      console.error(`❌ 프로필 생성 실패:`, profileError)
+      console.error(`📋 상세 정보:`, {
+        code: profileError.code,
+        message: profileError.message,
+        details: profileError.details,
+        hint: profileError.hint
+      })
+      
+      // 컬럼 정보 기반 더 구체적인 오류 메시지
+      if (profileError.message?.includes('profiles_provider_check')) {
+        throw new Error(`Provider 값 오류: '${provider}'는 허용되지 않는 값입니다. 허용 값: email, kakao, naver, google`)
+      } else if (profileError.message?.includes('null value')) {
+        throw new Error(`필수 값 누락: ${profileError.message}`)
+      } else {
+        throw new Error(`프로필 생성 실패: ${profileError.message}`)
+      }
     }
-
-    // 생성된 프로필 조회
+    
+    console.log(`✅ 프로필 생성 성공:`, insertedProfile)
+    
+    // 프로필 생성 후 검증 조회
+    await new Promise(resolve => setTimeout(resolve, 300)) // 0.3초 대기
     const newProfile = await fetchUserProfile(data.user.id)
     if (!newProfile) {
+      console.error(`❌ 생성된 프로필 조회 실패`)
       throw new Error('프로필을 생성했지만 조회할 수 없습니다.')
     }
+    
+    console.log(`✅ 프로필 검증 완료:`, {
+      id: newProfile.id,
+      email: newProfile.email,
+      provider: newProfile.provider
+    })
 
     authStateCache = {
       isAuthenticated: true,
@@ -282,8 +363,8 @@ export const signUp = async (
     }
 
     return newProfile
-  } catch (error: any) {
-    console.error('회원가입 오류:', error)
+  } catch (error: unknown) {
+    console.error('❌ 회원가입 전체 오류:', error)
     authStateCache = { isAuthenticated: false, user: null, loading: false }
     throw error
   }
@@ -292,6 +373,9 @@ export const signUp = async (
 // 비밀번호 재설정 요청 (이메일로 재설정 링크 발송)
 export const resetPassword = async (email: string): Promise<void> => {
   try {
+    const { createSupabaseBrowser } = await import('./supabase')
+    const supabase = createSupabaseBrowser()
+    
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`
     })
@@ -301,7 +385,7 @@ export const resetPassword = async (email: string): Promise<void> => {
       throw new Error('비밀번호 재설정 요청에 실패했습니다.')
     }
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('비밀번호 재설정 오류:', error)
     throw error
   }
@@ -310,6 +394,9 @@ export const resetPassword = async (email: string): Promise<void> => {
 // 새 비밀번호로 업데이트
 export const updatePassword = async (newPassword: string): Promise<void> => {
   try {
+    const { createSupabaseBrowser } = await import('./supabase')
+    const supabase = createSupabaseBrowser()
+    
     const { error } = await supabase.auth.updateUser({
       password: newPassword
     })
@@ -319,7 +406,7 @@ export const updatePassword = async (newPassword: string): Promise<void> => {
       throw new Error('비밀번호 변경에 실패했습니다.')
     }
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('비밀번호 변경 오류:', error)
     throw error
   }
@@ -410,30 +497,14 @@ export const getCurrentUser = (): User | null => {
 
 // 인증 상태 변경 감지 (실시간)
 export const onAuthStateChange = (callback: (authState: AuthState) => void) => {
-  return supabase.auth.onAuthStateChange(async (event, session) => {
+  return (async () => {
+    const { createSupabaseBrowser } = await import('./supabase')
+    const supabase = createSupabaseBrowser()
     
-    if (event === 'SIGNED_IN' && session?.user) {
-      // 로그인됨
-      const userProfile = await fetchUserProfile(session.user.id)
-      authStateCache = {
-        isAuthenticated: !!userProfile,
-        user: userProfile,
-        loading: false
-      }
-      saveAuthToStorage(authStateCache)
-      callback(authStateCache)
-    } else if (event === 'SIGNED_OUT') {
-      // 로그아웃됨
-      authStateCache = {
-        isAuthenticated: false,
-        user: null,
-        loading: false
-      }
-      saveAuthToStorage(authStateCache)
-      callback(authStateCache)
-    } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-      // 토큰 갱신됨 (기존 상태 유지, 필요시 프로필 재조회)
-      if (!authStateCache.user) {
+    return supabase.auth.onAuthStateChange(async (event, session) => {
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        // 로그인됨
         const userProfile = await fetchUserProfile(session.user.id)
         authStateCache = {
           isAuthenticated: !!userProfile,
@@ -442,7 +513,28 @@ export const onAuthStateChange = (callback: (authState: AuthState) => void) => {
         }
         saveAuthToStorage(authStateCache)
         callback(authStateCache)
+      } else if (event === 'SIGNED_OUT') {
+        // 로그아웃됨
+        authStateCache = {
+          isAuthenticated: false,
+          user: null,
+          loading: false
+        }
+        saveAuthToStorage(authStateCache)
+        callback(authStateCache)
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        // 토큰 갱신됨 (기존 상태 유지, 필요시 프로필 재조회)
+        if (!authStateCache.user) {
+          const userProfile = await fetchUserProfile(session.user.id)
+          authStateCache = {
+            isAuthenticated: !!userProfile,
+            user: userProfile,
+            loading: false
+          }
+          saveAuthToStorage(authStateCache)
+          callback(authStateCache)
+        }
       }
-    }
-  })
+    })
+  })()
 }

@@ -1,0 +1,18 @@
+# ESLint ignore patterns
+
+# Node modules
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Legacy files
+legacy/
+
+# Build files
+dist/
+build/
+
+# Environment files
+.env*

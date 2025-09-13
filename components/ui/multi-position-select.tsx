@@ -110,9 +110,6 @@ export function MultiPositionSelect({
               </div>
             ))}
           </div>
-          <div className="text-xs text-muted-foreground mt-2">
-            스킬 가중치: 주포지션 100%, 부포지션 {80 - selectedPositions.length * 10}%~80%
-          </div>
         </div>
       )}
       

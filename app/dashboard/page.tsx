@@ -5,15 +5,16 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { getAuthState, logout, getCurrentUser } from '@/lib/auth'
-import { User, TeamMember } from '@/lib/types'
-import { getTeamMembers, getUserTeams, getUserById } from '@/lib/supabase-api'
-import { Crown, Users, Plus, UserPlus, Gamepad2, ArrowRight } from 'lucide-react'
+import { logout } from '@/lib/auth'
+import { User } from '@/lib/types'
+import { getUserTeams } from '@/lib/supabase-api'
+import { useAuth } from '@/components/providers/AuthProvider'
+import { Crown, Users, Plus, UserPlus, Gamepad2, ArrowRight, Settings } from 'lucide-react'
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<User | null>(null)
+  const { authState, isLoading: authLoading } = useAuth()
   const [userTeams, setUserTeams] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
   const loadUserTeams = async (userId: string) => {
@@ -27,35 +28,25 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    const checkAuthAndLoadData = async () => {
-      try {
-        console.log('대시보드: 인증 상태 확인 시작')
-        const authState = await getAuthState()
-        console.log('대시보드: 인증 상태 결과', authState)
-        
-        if (!authState.isAuthenticated) {
-          console.log('대시보드: 인증 안됨, 로그인으로 이동')
-          router.push('/login')
-          return
-        }
-
-        console.log('대시보드: 인증됨, 사용자:', authState.user?.name)
-        setUser(authState.user)
-        
-        // 사용자가 속한 팀 목록 찾기 (Supabase API 사용)
-        if (authState.user) {
-          await loadUserTeams(authState.user.id)
-        }
-        
-        setIsLoading(false)
-      } catch (error) {
-        console.error('대시보드: 인증 확인 오류:', error)
-        router.push('/login')
-      }
+    // 인증 상태가 로딩 중이면 대기
+    if (authLoading) {
+      return
     }
 
-    checkAuthAndLoadData()
-  }, [router])
+    // 인증되지 않았으면 로그인으로 리다이렉션
+    if (!authState.isAuthenticated) {
+      router.replace('/login')
+      return
+    }
+
+    // 인증되었으면 팀 목록 로드 (한 번만)
+    if (authState.user && userTeams.length === 0 && !isLoading) {
+      setIsLoading(true)
+      loadUserTeams(authState.user.id).finally(() => {
+        setIsLoading(false)
+      })
+    }
+  }, [authState, authLoading, router, userTeams.length]) // isLoading 제거
 
   const handleLogout = () => {
     logout()
@@ -70,10 +61,15 @@ export default function DashboardPage() {
     router.push('/join-team')
   }
 
-  if (isLoading) {
+  const handleProfile = () => {
+    router.push('/profile')
+  }
+
+  // 로딩 중이거나 인증되지 않은 경우 로딩 화면
+  if (authLoading || !authState.isAuthenticated || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div>로딩 중...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     )
   }
@@ -90,11 +86,17 @@ export default function DashboardPage() {
               </div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">롤 내전 매니저</h1>
             </div>
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-sm text-gray-500 dark:text-gray-400">안녕하세요</p>
-                <p className="font-semibold text-gray-900 dark:text-white">{user?.name}님</p>
+                <p className="font-semibold text-gray-900 dark:text-white">
+                  {authState.user?.username || authState.user?.name}님
+                </p>
               </div>
+              <Button variant="ghost" size="sm" onClick={handleProfile} className="rounded-xl">
+                <Settings className="w-4 h-4 mr-2" />
+                프로필
+              </Button>
               <Button variant="outline" onClick={handleLogout} className="rounded-xl px-6">
                 로그아웃
               </Button>
@@ -144,12 +146,12 @@ export default function DashboardPage() {
                         <div>
                           <h4 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
                             {team.name}
-                            {team.leaderId === user?.id && (
+                            {team.leaderId === authState.user?.id && (
                               <Crown className="w-5 h-5 text-yellow-500" />
                             )}
                           </h4>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {team.leaderId === user?.id ? '리더' : '멤버'}
+                            {team.leaderId === authState.user?.id ? '리더' : '멤버'}
                           </p>
                         </div>
                       </div>

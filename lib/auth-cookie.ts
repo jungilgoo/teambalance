@@ -66,7 +66,7 @@ export const cookieLogin = async (
       }
       
       updateAuthState(newState)
-      return { success: true, user: newState.user }
+      return { success: true, user: newState.user || undefined }
     }
 
     return { success: false, message: result.message }
@@ -108,11 +108,12 @@ export const hybridCookieLogin = async (
       // 이메일로 실제 로그인 시도
       return cookieLogin(user.email, password, rememberMe)
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('하이브리드 쿠키 로그인 오류:', error)
+    const errorMessage = error instanceof Error ? error.message : '로그인 중 오류가 발생했습니다.'
     return {
       success: false,
-      message: error.message || '로그인 중 오류가 발생했습니다.'
+      message: errorMessage
     }
   }
 }
@@ -273,7 +274,11 @@ export const subscribeCookieAuthState = (listener: (state: SecureAuthState) => v
   authStateListeners.add(listener)
   
   // 즉시 현재 상태 알림
-  listener(currentAuthState)
+  try {
+    listener(currentAuthState)
+  } catch (error) {
+    console.error('인증 상태 리스너 오류:', error)
+  }
   
   // 구독 해제 함수 반환
   return () => {
@@ -348,7 +353,5 @@ export const initializeCookieAuth = async () => {
   }
 }
 
-// 브라우저 환경에서 자동 초기화
-if (typeof window !== 'undefined') {
-  initializeCookieAuth()
-}
+// 브라우저 환경에서 자동 초기화 - AuthProvider에서 관리하므로 제거
+// AuthProvider에서 수동으로 initializeCookieAuth() 호출
