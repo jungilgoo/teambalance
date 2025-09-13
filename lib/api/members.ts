@@ -41,7 +41,7 @@ export const getTeamMembers = async (
       nickname: member.nickname,
       tier: member.tier as TierType,
       mainPosition: member.main_position as Position,
-      subPositions: member.sub_positions ? member.sub_positions as Position[] : (member.sub_position ? [member.sub_position as Position] : []),
+      subPositions: member.sub_position ? [member.sub_position as Position] : [],
       stats: {
         totalWins: member.total_wins,
         totalLosses: member.total_losses,
@@ -128,7 +128,7 @@ export const addTeamMember = async (
       nickname: member.nickname,
       tier: member.tier as TierType,
       mainPosition: member.main_position as Position,
-      subPositions: member.sub_positions ? member.sub_positions as Position[] : (member.sub_position ? [member.sub_position as Position] : []),
+      subPositions: member.sub_position ? [member.sub_position as Position] : [],
       stats: {
         totalWins: member.total_wins,
         totalLosses: member.total_losses,
@@ -451,7 +451,7 @@ export const getPendingJoinRequests = async (teamId: string): Promise<TeamMember
       nickname: member.nickname,
       tier: member.tier as TierType,
       mainPosition: member.main_position as Position,
-      subPositions: member.sub_positions ? member.sub_positions as Position[] : (member.sub_position ? [member.sub_position as Position] : []),
+      subPositions: member.sub_position ? [member.sub_position as Position] : [],
       stats: {
         totalWins: member.total_wins,
         totalLosses: member.total_losses,
@@ -770,7 +770,7 @@ export const updateMemberPositions = async (
     // 먼저 현재 멤버 정보를 조회
     const { data: currentMember, error: selectError } = await supabase
       .from('team_members')
-      .select('id, main_position, sub_position, sub_positions')
+      .select('id, main_position, sub_position')
       .eq('id', memberId)
       .single()
 
@@ -799,8 +799,7 @@ export const updateMemberPositions = async (
 
     const updateData = {
       main_position: mainPosition,
-      sub_position: legacySubPosition,
-      sub_positions: finalSubPositions.length > 0 ? finalSubPositions : []
+      sub_position: legacySubPosition
     }
 
     console.log('업데이트할 데이터:', updateData)
