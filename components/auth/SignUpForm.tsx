@@ -9,7 +9,7 @@ interface SignUpFormProps {
   username: string
   usernameError: string
   usernameSuggestions: string[]
-  isCheckingUsername: boolean
+  error: string
   isLoading: boolean
   onNameChange: (value: string) => void
   onEmailChange: (value: string) => void
@@ -27,7 +27,7 @@ const SignUpForm = memo(function SignUpForm({
   username,
   usernameError,
   usernameSuggestions,
-  isCheckingUsername,
+  error,
   isLoading,
   onNameChange,
   onEmailChange,
@@ -64,24 +64,12 @@ const SignUpForm = memo(function SignUpForm({
           placeholder="게이머 닉네임 (선택사항, 2-20자)"
           value={username}
           onChange={(e) => onUsernameChange(e.target.value)}
-          className={`h-12 ${usernameError ? 'border-red-500' : username && !isCheckingUsername && !usernameError ? 'border-green-500' : ''}`}
+          className={`h-12 ${usernameError ? 'border-red-500' : ''}`}
         />
-        
-        {isCheckingUsername && (
-          <p className="text-sm text-blue-600 dark:text-blue-400">
-            닉네임 확인 중...
-          </p>
-        )}
         
         {usernameError && (
           <p className="text-sm text-red-600 dark:text-red-400">
             {usernameError}
-          </p>
-        )}
-        
-        {username && !isCheckingUsername && !usernameError && (
-          <p className="text-sm text-green-600 dark:text-green-400">
-            사용 가능한 닉네임입니다!
           </p>
         )}
 
@@ -104,7 +92,7 @@ const SignUpForm = memo(function SignUpForm({
         )}
 
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          닉네임은 나중에 설정할 수도 있습니다.
+          닉네임은 회원가입 시 중복 여부가 확인됩니다. (나중에 설정 가능)
         </p>
       </div>
 
@@ -117,9 +105,16 @@ const SignUpForm = memo(function SignUpForm({
         required
       />
 
+      {/* 전체 에러 메시지 */}
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
       <Button
         onClick={onSubmit}
-        disabled={isLoading || (!!username && !!usernameError)}
+        disabled={isLoading}
         className="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
       >
         {isLoading ? '처리 중...' : '회원가입'}

@@ -15,7 +15,6 @@ export const checkEmailExists = async (email: string): Promise<boolean> => {
       return true // 유효하지 않은 이메일은 존재하는 것으로 처리 (보안)
     }
 
-    // RLS 정책으로 인해 직접 조회가 어려우므로 항상 false 반환
     // 실제 중복 검사는 Supabase Auth에서 처리됨
     return false
   } catch (error) {

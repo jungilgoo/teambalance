@@ -28,7 +28,7 @@ interface SelectedMember extends TeamMember {
     name: string
     username?: string
     avatar?: string
-    provider: 'kakao' | 'naver' | 'google'
+    provider: 'email'
     createdAt: Date
   }
   calculatedTierScore?: number

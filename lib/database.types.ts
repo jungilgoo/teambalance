@@ -16,7 +16,7 @@ export type Database = {
           name: string
           username: string | null
           avatar_url: string | null
-          provider: 'kakao' | 'naver' | 'google'
+          provider: 'email'
           created_at: string
         }
         Insert: {
@@ -25,7 +25,7 @@ export type Database = {
           name: string
           username?: string | null
           avatar_url?: string | null
-          provider: 'kakao' | 'naver' | 'google'
+          provider: 'email'
           created_at?: string
         }
         Update: {
@@ -34,7 +34,7 @@ export type Database = {
           name?: string
           username?: string | null
           avatar_url?: string | null
-          provider?: 'kakao' | 'naver' | 'google'
+          provider?: 'email'
           created_at?: string
         }
       }

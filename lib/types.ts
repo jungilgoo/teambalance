@@ -5,7 +5,7 @@ export interface User {
   name: string
   username?: string  // 게이머 닉네임 (선택사항, 3-20자, 영문/한글/숫자/_/- 허용)
   avatar?: string
-  provider: 'email' | 'kakao' | 'naver' | 'google'  // ✅ 'email' 타입 추가
+  provider: 'email'  // 이메일/닉네임 하이브리드 로그인만 지원
   createdAt: Date
 }
 

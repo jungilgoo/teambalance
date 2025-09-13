@@ -103,7 +103,7 @@ const mapProfileToUser = (profile: SupabaseProfile): User => ({
   name: profile.name,
   username: profile.username || undefined,
   avatar: profile.avatar_url || undefined,
-  provider: profile.provider as 'email' | 'kakao' | 'naver' | 'google',
+  provider: profile.provider as 'email',
   createdAt: new Date(profile.created_at)
 })
 
@@ -223,7 +223,7 @@ export const signUp = async (
   password: string, 
   name: string, 
   username?: string, 
-  provider: 'email' | 'kakao' | 'naver' | 'google' = 'email'
+  provider: 'email' = 'email'
 ): Promise<User> => {
   try {
     console.log(`🔍 회원가입 시작 - Email: ${email}, Provider: ${provider}`)

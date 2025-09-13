@@ -23,59 +23,21 @@ function LoginContent() {
   const [isForgotPassword, setIsForgotPassword] = useState(false)
   const [resetEmail, setResetEmail] = useState('')
   
-  // 닉네임 관련 상태
+  // 닉네임 관련 상태 (회원가입 시에만 검증)
   const [usernameError, setUsernameError] = useState('')
   const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([])
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false)
+  const [error, setError] = useState('')
   
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // 닉네임 실시간 검증 (회원가입 모드에서만 동작) - 메모이제이션
-  const handleUsernameChange = useCallback(async (newUsername: string) => {
+  // 닉네임 입력 변경 (실시간 검증 제거)
+  const handleUsernameChange = useCallback((newUsername: string) => {
     setUsername(newUsername)
     setUsernameError('')
     setUsernameSuggestions([])
-    
-    if (!newUsername || !isSignUp) return // 로그인 모드에서는 검증하지 않음
-    
-    // 유효성 검사
-    const validation = validateUsername(newUsername)
-    if (!validation.isValid) {
-      setUsernameError(validation.error || '유효하지 않은 닉네임입니다.')
-      return
-    }
-    
-    // 중복 검사 (디바운싱 시간 증가)
-    setIsCheckingUsername(true)
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000)) // 1000ms 디바운싱으로 증가
-      
-      // 회원가입 모드가 아니라면 검증 중단
-      if (!isSignUp) {
-        setIsCheckingUsername(false)
-        return
-      }
-      
-      const exists = await checkUsernameExists(newUsername)
-      if (exists) {
-        setUsernameError('이미 사용 중인 닉네임입니다.')
-        
-        // 대안 제안 (lazy loading)
-        setTimeout(async () => {
-          if (isSignUp) {
-            const suggestions = await suggestUsernames(newUsername)
-            setUsernameSuggestions(suggestions)
-          }
-        }, 500)
-      }
-    } catch (error) {
-      console.error('닉네임 검증 오류:', error)
-      setUsernameError('닉네임 확인 중 오류가 발생했습니다.')
-    } finally {
-      setIsCheckingUsername(false)
-    }
-  }, [isSignUp])
+    setError('')
+  }, [])
 
 
   const handleForgotPassword = useCallback(async () => {
@@ -105,13 +67,37 @@ function LoginContent() {
       if (isSignUp) {
         // 회원가입 검증
         if (!email || !password || !name) {
-          alert('모든 필수 항목을 입력해주세요.')
+          setError('모든 필수 항목을 입력해주세요.')
           return
         }
 
-        if (username && usernameError) {
-          alert('닉네임 오류를 해결해주세요.')
-          return
+        // 닉네임이 입력된 경우 유효성 및 중복 검사
+        if (username.trim()) {
+          // 유효성 검사
+          const validation = validateUsername(username.trim())
+          if (!validation.isValid) {
+            setUsernameError(validation.error || '유효하지 않은 닉네임입니다.')
+            setError('닉네임을 확인해주세요.')
+            return
+          }
+
+          // 중복 검사
+          try {
+            const exists = await checkUsernameExists(username.trim())
+            if (exists) {
+              setUsernameError('이미 사용 중인 닉네임입니다.')
+              
+              // 대안 제안
+              const suggestions = await suggestUsernames(username.trim())
+              setUsernameSuggestions(suggestions)
+              setError('다른 닉네임을 사용해주세요.')
+              return
+            }
+          } catch (error) {
+            console.error('닉네임 검증 오류:', error)
+            setError('닉네임 확인 중 오류가 발생했습니다. 다시 시도해주세요.')
+            return
+          }
         }
 
         await signUp(email, password, name, username || undefined, 'email')
@@ -124,6 +110,9 @@ function LoginContent() {
         setName('')
         setUsername('')
         setLoginId('')
+        setError('')
+        setUsernameError('')
+        setUsernameSuggestions([])
       } else {
         // 로그인 검증
         if (!loginId || !password) {
@@ -139,20 +128,20 @@ function LoginContent() {
     } catch (error: unknown) {
       console.error('인증 실패:', error)
       const errorMessage = error instanceof Error ? error.message : '인증에 실패했습니다.'
-      alert(errorMessage)
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
-  }, [isSignUp, email, password, name, username, usernameError, loginId, router, searchParams])
+  }, [isSignUp, email, password, name, username, loginId, router, searchParams])
 
   // 모드 전환 함수 메모이제이션
   const toggleMode = useCallback(() => {
     setIsSignUp(!isSignUp)
-    // 모드 전환 시 닉네임 관련 상태 초기화
+    // 모드 전환 시 상태 초기화
     setUsername('')
     setUsernameError('')
     setUsernameSuggestions([])
-    setIsCheckingUsername(false)
+    setError('')
   }, [isSignUp])
 
   // 닉네임 제안 선택 함수 메모이제이션
@@ -218,7 +207,7 @@ function LoginContent() {
                   username={username}
                   usernameError={usernameError}
                   usernameSuggestions={usernameSuggestions}
-                  isCheckingUsername={isCheckingUsername}
+                  error={error}
                   isLoading={isLoading}
                   onNameChange={setName}
                   onEmailChange={setEmail}
