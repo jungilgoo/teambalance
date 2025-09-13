@@ -92,7 +92,11 @@ export function NumberWheel({
   const handleWheel = (e: React.WheelEvent) => {
     if (!isOpen) return
     
-    e.preventDefault()
+    // passive event listener 경고를 방지하기 위해 조건부로만 preventDefault 호출
+    if (e.cancelable) {
+      e.preventDefault()
+    }
+    
     const delta = e.deltaY > 0 ? 1 : -1
     const newValue = Math.min(max, Math.max(min, value + delta))
     if (newValue !== value) {
@@ -109,7 +113,11 @@ export function NumberWheel({
   const handleTouchMove = (e: React.TouchEvent) => {
     if (touchStart === null || !isOpen) return
     
-    e.preventDefault()
+    // passive event listener 경고를 방지하기 위해 조건부로만 preventDefault 호출
+    if (e.cancelable) {
+      e.preventDefault()
+    }
+    
     const touchY = e.touches[0].clientY
     const diff = touchStart - touchY
     
