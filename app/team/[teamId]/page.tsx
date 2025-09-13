@@ -551,13 +551,19 @@ export default function TeamDashboard() {
       )}
 
       {/* 팀 관리 모달 */}
-      {authState.user && (
+      {authState.user && team && (
         <TeamManagementModal
           isOpen={isTeamManagementModalOpen}
           onClose={() => setIsTeamManagementModalOpen(false)}
           teamId={teamId}
           currentUserId={authState.user.id}
+          isLeader={!!isTeamLeader}
+          teamName={team.name}
           onMemberUpdate={handleMemberUpdate}
+          onTeamDeleted={() => {
+            // 팀이 삭제되면 대시보드로 리다이렉트
+            router.push('/dashboard')
+          }}
         />
       )}
 

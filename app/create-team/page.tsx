@@ -82,16 +82,23 @@ export default function CreateTeamPage() {
 
       console.log('팀 생성 완료:', newTeam)
 
-      // 2. 팀장을 팀 멤버로 추가 (기본 설정으로)
+      // 2. 팀장을 팀 멤버로 추가 - 사용자가 입력할 수 있도록 추후 개선 예정
+      // 지금은 기본값으로 추가하여 팀 생성이 완전히 작동하도록 함
       const teamMember = await addTeamMember(
         newTeam.id,
         authState.user.id,
         authState.user.name || '팀장',
-        'gold_i', // 기본 티어
-        'mid',    // 기본 주 포지션
-        ['top'],  // 기본 부 포지션들
+        'gold_i', // 기본 티어 (나중에 사용자 입력으로 변경)
+        'mid',    // 기본 주 포지션 (나중에 사용자 입력으로 변경)
+        ['adc'],  // 기본 부 포지션들 (나중에 사용자 입력으로 변경)
         'leader'  // 역할
       )
+
+      if (!teamMember) {
+        console.error('팀장 멤버 추가 실패')
+        // 팀이 생성되었지만 멤버 추가가 실패한 경우에도 팀 페이지로 이동
+        // 사용자가 수동으로 멤버 정보를 추가할 수 있음
+      }
 
       console.log('팀장 추가 완료:', teamMember)
       

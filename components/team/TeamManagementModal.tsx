@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { TeamMember } from '@/lib/types'
 import { getPendingJoinRequests, approveJoinRequest, rejectJoinRequest, getTeamMembers, kickTeamMember } from '@/lib/supabase-api'
+import { deleteTeam, canDeleteTeam } from '@/lib/api/teams'
 import { TierBadge } from '@/components/ui/tier-badge'
 import { positionNames } from '@/lib/utils'
 import { 
@@ -29,7 +30,7 @@ import {
   Crown,
   AlertTriangle,
   Trash2
-} from 'lucide-react'
+, Settings } from 'lucide-react'
 // import { toast } from 'sonner'
 
 interface TeamManagementModalProps {
@@ -37,7 +38,10 @@ interface TeamManagementModalProps {
   onClose: () => void
   teamId: string
   currentUserId: string
+  isLeader: boolean
+  teamName: string
   onMemberUpdate?: () => void
+  onTeamDeleted?: () => void
 }
 
 interface PendingRequestWithLoading extends TeamMember {
@@ -49,16 +53,22 @@ export default function TeamManagementModal({
   onClose,
   teamId,
   currentUserId,
-  onMemberUpdate
+  isLeader,
+  teamName,
+  onMemberUpdate,
+  onTeamDeleted
 }: TeamManagementModalProps) {
   const [pendingRequests, setPendingRequests] = useState<PendingRequestWithLoading[]>([])
   const [activeMembers, setActiveMembers] = useState<TeamMember[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
   const [rejectingUserId, setRejectingUserId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'pending' | 'members'>('pending')
+  const [activeTab, setActiveTab] = useState<'pending' | 'members' | 'settings'>('pending')
   
   const [isKicking, setIsKicking] = useState(false)
+  const [isDeletingTeam, setIsDeletingTeam] = useState(false)
+  const [canDelete, setCanDelete] = useState<{ canDelete: boolean; reason?: string }>({ canDelete: false })
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // 승인 대기 요청 로드
   const loadPendingRequests = useCallback(async () => {
@@ -88,12 +98,26 @@ export default function TeamManagementModal({
     }
   }, [teamId])
 
+  // 팀 삭제 권한 확인
+  const checkDeletePermission = useCallback(async () => {
+    if (isLeader) {
+      try {
+        const result = await canDeleteTeam(teamId, currentUserId)
+        setCanDelete(result)
+      } catch (error) {
+        console.error('팀 삭제 권한 확인 오류:', error)
+        setCanDelete({ canDelete: false, reason: '권한 확인 중 오류가 발생했습니다.' })
+      }
+    }
+  }, [teamId, currentUserId, isLeader])
+
   useEffect(() => {
     if (isOpen) {
       loadPendingRequests()
       loadActiveMembers()
+      checkDeletePermission()
     }
-  }, [isOpen, teamId, loadActiveMembers, loadPendingRequests])
+  }, [isOpen, teamId, loadActiveMembers, loadPendingRequests, checkDeletePermission])
 
   // 참가 승인
   const handleApprove = async (memberId: string, nickname: string) => {
@@ -207,6 +231,46 @@ export default function TeamManagementModal({
     }
   }
 
+  // 팀 해체 실행
+  const handleDeleteTeam = async () => {
+    if (!canDelete.canDelete) {
+      alert(canDelete.reason || '팀을 삭제할 수 없습니다.')
+      return
+    }
+
+    const confirmed = confirm(
+      `정말로 "${teamName}" 팀을 해체하시겠습니까?\n\n` +
+      '⚠️ 이 작업은 되돌릴 수 없으며, 다음 데이터가 모두 삭제됩니다:\n' +
+      '- 모든 팀 멤버 정보\n' +
+      '- 팀 초대 링크\n' +
+      '- 세션 및 경기 기록\n' +
+      '- 통계 데이터\n\n' +
+      '정말로 진행하시겠습니까?'
+    )
+    
+    if (!confirmed) return
+
+    setIsDeletingTeam(true)
+    try {
+      const result = await deleteTeam(teamId, currentUserId)
+      
+      if (result.success) {
+        alert(result.message)
+        onClose()
+        if (onTeamDeleted) {
+          onTeamDeleted()
+        }
+      } else {
+        alert(result.message)
+      }
+    } catch (error) {
+      console.error('팀 삭제 오류:', error)
+      alert('팀 삭제 중 오류가 발생했습니다.')
+    } finally {
+      setIsDeletingTeam(false)
+    }
+  }
+
   const formatTimeAgo = (date: Date) => {
     const now = new Date()
     const diff = now.getTime() - date.getTime()
@@ -257,6 +321,18 @@ export default function TeamManagementModal({
           >
             활성 멤버 ({activeMembers.length})
           </button>
+          {isLeader && (
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'settings'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              팀 설정
+            </button>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -485,6 +561,65 @@ export default function TeamManagementModal({
                   ))}
                 </>
               )}
+            </>
+          )}
+
+          {!isLoading && activeTab === 'settings' && isLeader && (
+            <>
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Settings className="w-4 h-4 text-gray-600" />
+                  <span className="font-medium">팀 설정</span>
+                </div>
+
+                {/* 팀 해체 섹션 */}
+                <Card className="border border-red-200 bg-red-50/50">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-red-900 mb-2">
+                          팀 해체 (위험)
+                        </h3>
+                        <p className="text-red-700 mb-4">
+                          팀을 완전히 삭제합니다. 이 작업은 되돌릴 수 없으며, 모든 멤버 정보, 세션 기록, 통계 데이터가 영구적으로 삭제됩니다.
+                        </p>
+                        
+                        {!canDelete.canDelete && canDelete.reason && (
+                          <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3 mb-4">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="w-4 h-4 text-yellow-600" />
+                              <span className="text-sm text-yellow-800 font-medium">해체 불가</span>
+                            </div>
+                            <p className="text-sm text-yellow-700 mt-1">{canDelete.reason}</p>
+                          </div>
+                        )}
+
+                        <Button
+                          onClick={handleDeleteTeam}
+                          variant="destructive"
+                          disabled={!canDelete.canDelete || isDeletingTeam}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          {isDeletingTeam ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              팀 해체 중...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              "{teamName}" 팀 해체하기
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </>
           )}
         </div>
