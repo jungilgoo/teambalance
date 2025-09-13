@@ -373,20 +373,41 @@ export const signUp = async (
 // 비밀번호 재설정 요청 (이메일로 재설정 링크 발송)
 export const resetPassword = async (email: string): Promise<void> => {
   try {
+    console.log('🔍 비밀번호 재설정 요청 시작:', email)
+    
     const { createSupabaseBrowser } = await import('./supabase')
     const supabase = createSupabaseBrowser()
     
+    const redirectUrl = `${window.location.origin}/reset-password`
+    console.log('🔗 리다이렉트 URL:', redirectUrl)
+    
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`
+      redirectTo: redirectUrl
     })
     
     if (error) {
-      console.error('비밀번호 재설정 요청 오류:', error)
-      throw new Error('비밀번호 재설정 요청에 실패했습니다.')
+      console.error('❌ 비밀번호 재설정 요청 오류:', error)
+      console.error('📋 오류 상세:', {
+        code: error.message,
+        status: (error as any).status
+      })
+      
+      // 더 구체적인 오류 메시지
+      if (error.message.includes('Email not confirmed')) {
+        throw new Error('이메일 주소가 확인되지 않았습니다. 먼저 회원가입 시 받은 확인 이메일을 확인해주세요.')
+      } else if (error.message.includes('For security purposes')) {
+        throw new Error('보안상 이유로 잠시 후 다시 시도해주세요.')
+      } else if (error.message.includes('User not found')) {
+        throw new Error('등록되지 않은 이메일 주소입니다.')
+      } else {
+        throw new Error(`비밀번호 재설정 요청에 실패했습니다: ${error.message}`)
+      }
     }
     
+    console.log('✅ 비밀번호 재설정 이메일 발송 성공')
+    
   } catch (error: unknown) {
-    console.error('비밀번호 재설정 오류:', error)
+    console.error('💥 비밀번호 재설정 전체 오류:', error)
     throw error
   }
 }
