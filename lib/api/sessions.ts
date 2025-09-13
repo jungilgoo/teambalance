@@ -201,6 +201,13 @@ export const saveMatchResult = async (matchData: {
       return false
     }
 
+    // 중복 매치 방지: 이미 해당 세션에 매치가 존재하는지 확인
+    const existingMatch = await getMatchBySessionId(validatedSessionId)
+    if (existingMatch) {
+      console.log('⚠️ 이미 해당 세션에 매치가 존재합니다. 업데이트를 사용해주세요.', { sessionId: validatedSessionId })
+      return false
+    }
+
     // MVP 계산을 위한 Match 객체 생성
     const matchForMVP = {
       id: 'temp-match-for-mvp',
@@ -458,8 +465,8 @@ export const getMatchBySessionId = async (sessionId: string): Promise<Match | nu
       error: matchesError?.message
     })
     
-    // 세션 ID로 매치와 매치 멤버들을 조인하여 조회
-    const { data: match, error } = await supabase
+    // 세션 ID로 매치와 매치 멤버들을 조인하여 조회 (가장 최신 매치)
+    const { data: matches, error } = await supabase
       .from('matches')
       .select(`
         id,
@@ -479,7 +486,10 @@ export const getMatchBySessionId = async (sessionId: string): Promise<Match | nu
         )
       `)
       .eq('session_id', sessionId)
-      .single()
+      .order('created_at', { ascending: false })
+      .limit(1)
+    
+    const match = matches?.[0] || null
 
     console.log('📊 매치 조회 결과:', { 
       sessionId,
