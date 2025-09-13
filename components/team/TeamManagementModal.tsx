@@ -611,7 +611,7 @@ export default function TeamManagementModal({
                           ) : (
                             <>
                               <Trash2 className="w-4 h-4 mr-2" />
-                              "{teamName}" 팀 해체하기
+                              &ldquo;{teamName}&rdquo; 팀 해체하기
                             </>
                           )}
                         </Button>
