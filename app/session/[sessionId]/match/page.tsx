@@ -600,8 +600,19 @@ export default function MatchResultPage() {
 
     // 필수 필드 검증
     const allMembers = [...team1Data, ...team2Data]
+    console.log('검증 중인 멤버 데이터:', allMembers.map(member => ({
+      nickname: member.nickname,
+      champion: (member as any).champion,
+      kills: (member as any).kills,
+      deaths: (member as any).deaths,
+      assists: (member as any).assists
+    })))
+    
     const missingData = allMembers.some(member => 
       !(member as any).champion || 
+      (member as any).kills === null || 
+      (member as any).deaths === null || 
+      (member as any).assists === null ||
       (member as any).kills === undefined || 
       (member as any).deaths === undefined || 
       (member as any).assists === undefined

@@ -55,8 +55,12 @@ export default function TeamMatchesPage() {
         // 모든 멤버 ID에 대한 닉네임 수집
         const allMemberIds = new Set<string>()
         matchesData.forEach(match => {
-          match.team1.forEach(memberId => allMemberIds.add(memberId))
-          match.team2.forEach(memberId => allMemberIds.add(memberId))
+          if (match.team1 && match.team1.members) {
+            match.team1.members.forEach(member => allMemberIds.add(member.memberId))
+          }
+          if (match.team2 && match.team2.members) {
+            match.team2.members.forEach(member => allMemberIds.add(member.memberId))
+          }
         })
         
         // 닉네임 정보 로드
