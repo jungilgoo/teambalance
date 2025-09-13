@@ -41,6 +41,7 @@ export {
   updateSessionResult,
   saveMatchResult,
   getMatchesByTeamId,
+  getMatchBySessionId,
   deleteMatchResult,
   getRecentTeamActivities,
   getMemberMVPCount,

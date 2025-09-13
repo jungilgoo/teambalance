@@ -441,6 +441,76 @@ export const getMatchesByTeamId = async (teamId: string): Promise<Match[]> => {
   }
 }
 
+export const getMatchBySessionId = async (sessionId: string): Promise<Match | null> => {
+  try {
+    // 세션 ID로 매치와 매치 멤버들을 조인하여 조회
+    const { data: match, error } = await supabase
+      .from('matches')
+      .select(`
+        id,
+        session_id,
+        team_id,
+        winner,
+        mvp_member_id,
+        created_at,
+        match_members (
+          team_member_id,
+          team_side,
+          position,
+          champion,
+          kills,
+          deaths,
+          assists
+        )
+      `)
+      .eq('session_id', sessionId)
+      .single()
+
+    if (error || !match) {
+      console.log('매치 조회 결과 없음:', error)
+      return null
+    }
+
+    // 데이터를 Match 타입에 맞게 변환
+    const matchData = match as any
+    const team1Members = matchData.match_members
+      ?.filter((member: any) => member.team_side === 'team1')
+      .map((member: any) => ({
+        memberId: member.team_member_id,
+        position: member.position,
+        champion: member.champion,
+        kills: member.kills || 0,
+        deaths: member.deaths || 0,
+        assists: member.assists || 0
+      })) || []
+
+    const team2Members = matchData.match_members
+      ?.filter((member: any) => member.team_side === 'team2')
+      .map((member: any) => ({
+        memberId: member.team_member_id,
+        position: member.position,
+        champion: member.champion,
+        kills: member.kills || 0,
+        deaths: member.deaths || 0,
+        assists: member.assists || 0
+      })) || []
+
+    return {
+      id: matchData.id,
+      teamId: matchData.team_id || '',
+      sessionId: matchData.session_id,
+      team1: { members: team1Members },
+      team2: { members: team2Members },
+      winner: matchData.winner as 'team1' | 'team2',
+      mvpMemberId: matchData.mvp_member_id || undefined,
+      createdAt: new Date(matchData.created_at)
+    } as any
+  } catch (error) {
+    console.error('매치 조회 중 예외:', error)
+    return null
+  }
+}
+
 export const deleteMatchResult = async (matchId: string): Promise<boolean> => {
   try {
     // 매치 정보와 매치 멤버들을 조회하여 통계 롤백에 필요한 데이터 수집

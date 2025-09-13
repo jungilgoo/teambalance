@@ -1,14 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChampionSelect } from '@/components/ui/champion-select'
 import { NumberWheel } from '@/components/ui/number-wheel'
 import { getAuthState } from '@/lib/auth'
 import { Session, User, Position, TeamMember } from '@/lib/types'
-import { getSession, updateSessionResult, saveMatchResult } from '@/lib/supabase-api'
+import { getSession, updateSessionResult, saveMatchResult, getMatchBySessionId } from '@/lib/supabase-api'
 import { useSessionRealtime } from '@/lib/hooks/useSessionRealtime'
 import { useMatchRealtime } from '@/lib/hooks/useMatchRealtime'
 import { positionNames } from '@/lib/utils'
@@ -335,7 +335,9 @@ function ChampionKdaColumn({
 export default function MatchResultPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const sessionId = params.sessionId as string
+  const isEditMode = searchParams.get('edit') === 'true'
   
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -520,6 +522,45 @@ export default function MatchResultPage() {
           setIsLoading(false) // 핵심 UI는 이미 렌더링 가능
         }
 
+        // Edit 모드인 경우 기존 경기 결과 데이터 로드
+        if (isEditMode && isMounted) {
+          try {
+            console.log('Edit 모드: 기존 경기 결과 로드 시작')
+            const existingMatch = await getMatchBySessionId(sessionId)
+            
+            if (existingMatch) {
+              console.log('기존 경기 결과 로드 완료:', existingMatch)
+              
+              // 기존 매치 데이터와 세션 데이터를 병합
+              const mergeMatchDataWithSession = (sessionMembers: any[], matchMembers: any[]) => {
+                return sessionMembers.map(sessionMember => {
+                  const matchMember = matchMembers.find(m => m.memberId === sessionMember.id)
+                  return {
+                    ...sessionMember,
+                    champion: matchMember?.champion || '',
+                    kills: matchMember?.kills || 0,
+                    deaths: matchMember?.deaths || 0,
+                    assists: matchMember?.assists || 0,
+                    position: matchMember?.position || sessionMember.mainPosition
+                  }
+                })
+              }
+
+              const mergedTeam1 = mergeMatchDataWithSession(gameData.team1.members, existingMatch.team1.members)
+              const mergedTeam2 = mergeMatchDataWithSession(gameData.team2.members, existingMatch.team2.members)
+              
+              setTeam1Data(mergedTeam1)
+              setTeam2Data(mergedTeam2)
+              setWinner(existingMatch.winner)
+              
+              console.log('Edit 모드: 기존 데이터 적용 완료')
+            } else {
+              console.log('Edit 모드: 기존 경기 결과를 찾을 수 없음')
+            }
+          } catch (error) {
+            console.error('Edit 모드: 기존 경기 결과 로드 오류:', error)
+          }
+        }
 
         // Progressive Loading 2단계: 실시간 기능 등 부가 기능은 비동기로 로드
         setTimeout(() => {
@@ -541,7 +582,7 @@ export default function MatchResultPage() {
     return () => {
       isMounted = false
     }
-  }, [sessionId, router])
+  }, [sessionId, router, isEditMode])
 
   const updateTeamMember = (
     team: 'team1' | 'team2',
@@ -761,13 +802,13 @@ export default function MatchResultPage() {
               <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <Trophy className="w-6 h-6 text-yellow-500" />
-                  경기 결과 입력
+                  {isEditMode ? '경기 결과 수정' : '경기 결과 입력'}
                   {isSecondaryLoading && (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
                   )}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  각 플레이어의 챔피언과 KDA를 입력하세요
+                  {isEditMode ? '경기 결과를 수정하고 저장하세요' : '각 플레이어의 챔피언과 KDA를 입력하세요'}
                   {isSecondaryLoading && (
                     <span className="ml-2 text-blue-600">• 실시간 기능 로딩 중...</span>
                   )}
@@ -782,7 +823,7 @@ export default function MatchResultPage() {
                 className="flex items-center gap-2"
               >
                 <Save className="w-4 h-4" />
-                {isSaving ? '저장 중...' : '결과 저장'}
+{isSaving ? '저장 중...' : (isEditMode ? '수정 저장' : '결과 저장')}
               </Button>
             </div>
           </div>
@@ -902,7 +943,7 @@ export default function MatchResultPage() {
               className="px-12 h-12 text-lg"
             >
               <Save className="w-5 h-5 mr-2" />
-              {isSaving ? '저장 중...' : '경기 결과 저장'}
+{isSaving ? '저장 중...' : (isEditMode ? '경기 결과 수정' : '경기 결과 저장')}
             </Button>
           </div>
         </div>
