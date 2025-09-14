@@ -126,9 +126,12 @@ export default function CreateSessionModal({ teamId, currentUserId }: CreateSess
   } => {
     try {
       // 새로운 최적화된 팀 밸런싱 알고리즘 사용
+      console.log('🎯 최적화된 팀 밸런싱 시도:', players.length, '명')
       const optimizedResult = optimizedTeamBalancing(players)
+      console.log('🎯 최적화 결과:', optimizedResult.success, optimizedResult.message)
       
       if (optimizedResult.success && optimizedResult.bestCombination) {
+        console.log('✅ 최적화된 알고리즘 성공!')
         const legacyFormat = convertToLegacyFormat(optimizedResult.bestCombination)
         
         return {
@@ -142,12 +145,16 @@ export default function CreateSessionModal({ teamId, currentUserId }: CreateSess
             feasible: legacyFormat.positionFeasible
           }
         }
+      } else {
+        console.log('❌ 최적화된 알고리즘 실패:', optimizedResult.message)
       }
     } catch (error) {
       // 최적화된 밸런싱 실패 시 백업 방식 사용
+      console.error('❌ 최적화된 밸런싱 예외:', error)
     }
 
     // 백업: 균형잡힌 스네이크 드래프트
+    console.log('🔄 백업 방식 사용: 스네이크 드래프트')
     const sortedPlayers = [...players].sort((a, b) => b.calculatedTierScore! - a.calculatedTierScore!)
     const team1: SelectedMember[] = []
     const team2: SelectedMember[] = []
