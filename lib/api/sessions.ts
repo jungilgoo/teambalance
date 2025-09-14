@@ -170,6 +170,37 @@ export const updateSessionResult = async (
 // 매치 결과 관리 API 함수들
 // ============================================================================
 
+// 멤버 ID 배치 검증 함수 추가
+const validateMemberIds = async (memberIds: string[]): Promise<{ valid: string[]; invalid: string[] }> => {
+  const valid: string[] = []
+  const invalid: string[] = []
+  
+  for (const memberId of memberIds) {
+    if (!memberId || memberId === 'undefined') {
+      invalid.push(memberId)
+      continue
+    }
+    
+    try {
+      const { data: member, error } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('id', memberId)
+        .single()
+      
+      if (error || !member) {
+        invalid.push(memberId)
+      } else {
+        valid.push(memberId)
+      }
+    } catch (error) {
+      invalid.push(memberId)
+    }
+  }
+  
+  return { valid, invalid }
+}
+
 export const saveMatchResult = async (matchData: {
   sessionId: string
   teamId: string
@@ -192,14 +223,27 @@ export const saveMatchResult = async (matchData: {
   }>
 }): Promise<boolean> => {
   try {
+    console.log('🏁 매치 결과 저장 시작:', { sessionId: matchData.sessionId, winningTeam: matchData.winningTeam })
+    
     // 입력값 검증
     const validatedSessionId = validateUUID(matchData.sessionId)
     const validatedTeamId = validateUUID(matchData.teamId)
     
     if (!validatedSessionId || !validatedTeamId) {
-      console.error('매치 결과 저장 입력값 검증 실패')
+      console.error('❌ 매치 결과 저장 입력값 검증 실패')
       return false
     }
+
+    // 모든 멤버 ID 검증
+    const allMemberIds = [...matchData.team1, ...matchData.team2].map(player => player.memberId)
+    const memberValidation = await validateMemberIds(allMemberIds)
+    
+    if (memberValidation.invalid.length > 0) {
+      console.error('❌ 잘못된 멤버 ID가 발견됨:', memberValidation.invalid)
+      return false
+    }
+    
+    console.log('✅ 모든 멤버 ID 검증 완료:', { validCount: memberValidation.valid.length })
 
     // 중복 매치 방지: 이미 해당 세션에 매치가 존재하는지 확인
     const existingMatch = await getMatchBySessionId(validatedSessionId)
@@ -281,24 +325,62 @@ export const saveMatchResult = async (matchData: {
     }
 
     // 개별 플레이어 통계 업데이트
+    console.log('📊 멤버 통계 업데이트 시작')
     const team1Winners = matchData.winningTeam === 'team1'
     const team2Winners = matchData.winningTeam === 'team2'
+    const statUpdateErrors: string[] = []
 
     for (const player of matchData.team1) {
       const isWinner = team1Winners
       const isMVP = player.memberId === mvpMemberId
-      await updateMemberStats(player.memberId, player.position, isWinner, isMVP)
+      const result = await updateMemberStats(player.memberId, player.position, isWinner, isMVP)
+      if (!result.success) {
+        statUpdateErrors.push(`Team1 ${player.memberId}: ${result.error}`)
+      }
     }
 
     for (const player of matchData.team2) {
       const isWinner = team2Winners
       const isMVP = player.memberId === mvpMemberId
-      await updateMemberStats(player.memberId, player.position, isWinner, isMVP)
+      const result = await updateMemberStats(player.memberId, player.position, isWinner, isMVP)
+      if (!result.success) {
+        statUpdateErrors.push(`Team2 ${player.memberId}: ${result.error}`)
+      }
     }
 
+    if (statUpdateErrors.length > 0) {
+      console.error('⚠️ 일부 멤버 통계 업데이트 실패:', statUpdateErrors)
+      // 실패해도 매치 저장은 성공으로 처리 (배치 업데이트 처리를 위해)
+    } else {
+      console.log('✅ 모든 멤버 통계 업데이트 완료')
+    }
+
+    console.log('✅ 매치 결과 저장 및 통계 업데이트 완료')
+    
+    // 최종 검증: 새로 생성된 통계 확인
+    console.log('🔍 새로 생성된 통계 검증 시작')
+    
+    for (const member of [...matchData.team1, ...matchData.team2]) {
+      try {
+        const { data: updatedMember, error } = await supabase
+          .from('team_members')
+          .select('total_wins, total_losses, tier_score, nickname')
+          .eq('id', member.memberId)
+          .single()
+          
+        if (error || !updatedMember) {
+          console.error(`⚠️ 새로 생성 후 검증 실패 - ${member.memberId}:`, error)
+        } else {
+          console.log(`✅ ${(updatedMember as any).nickname}: W${(updatedMember as any).total_wins} L${(updatedMember as any).total_losses} TS:${Math.round((updatedMember as any).tier_score)}`)
+        }
+      } catch (error) {
+        console.error(`⚠️ 새로 생성 후 검증 예외 - ${member.memberId}:`, error)
+      }
+    }
+    
     return true
   } catch (error) {
-    console.error('매치 결과 저장 중 예외:', error)
+    console.error('❌ 매치 결과 저장 중 예외:', error)
     return false
   }
 }
@@ -308,8 +390,17 @@ const updateMemberStats = async (
   position: Position,
   isWinner: boolean,
   isMVP: boolean
-): Promise<void> => {
+): Promise<{ success: boolean; error?: string }> => {
   try {
+    console.log(`📊 멤버 통계 업데이트 시작:`, { memberId, position, isWinner, isMVP })
+    
+    // 멤버 ID 검증
+    if (!memberId || memberId === 'undefined') {
+      const error = `잘못된 멤버 ID: ${memberId}`
+      console.error('❌', error)
+      return { success: false, error }
+    }
+
     // 현재 멤버 정보 조회
     const { data: member, error: memberError } = await supabase
       .from('team_members')
@@ -318,9 +409,17 @@ const updateMemberStats = async (
       .single()
 
     if (memberError || !member) {
-      console.error('멤버 통계 업데이트용 정보 조회 오류:', memberError)
-      return
+      const error = `멤버 정보 조회 실패: ${memberError?.message || '멤버를 찾을 수 없음'}`
+      console.error('❌', error, { memberId, memberError })
+      return { success: false, error }
     }
+
+    console.log(`🔍 멤버 정보 조회 성공:`, {
+      memberId,
+      nickname: (member as any).nickname,
+      currentWins: (member as any).total_wins,
+      currentLosses: (member as any).total_losses
+    })
 
     // 통계 업데이트 준비
     const memberData = member as any
@@ -353,15 +452,23 @@ const updateMemberStats = async (
 
     // 새로운 티어 점수 계산 (승률 반영)
     const newStats = {
-      totalWins: updates.total_wins || memberData.total_wins,
-      totalLosses: updates.total_losses || memberData.total_losses,
-      mainPositionGames: updates.main_position_games || memberData.main_position_games,
-      mainPositionWins: updates.main_position_wins || memberData.main_position_wins,
-      subPositionGames: updates.sub_position_games || memberData.sub_position_games,
-      subPositionWins: updates.sub_position_wins || memberData.sub_position_wins
+      totalWins: updates.total_wins !== undefined ? updates.total_wins : memberData.total_wins,
+      totalLosses: updates.total_losses !== undefined ? updates.total_losses : memberData.total_losses,
+      mainPositionGames: updates.main_position_games !== undefined ? updates.main_position_games : memberData.main_position_games,
+      mainPositionWins: updates.main_position_wins !== undefined ? updates.main_position_wins : memberData.main_position_wins,
+      subPositionGames: updates.sub_position_games !== undefined ? updates.sub_position_games : memberData.sub_position_games,
+      subPositionWins: updates.sub_position_wins !== undefined ? updates.sub_position_wins : memberData.sub_position_wins
     }
 
+    const oldTierScore = memberData.tier_score
     updates.tier_score = calculateTierScore(memberData.tier as TierType, newStats)
+
+    console.log(`📈 통계 업데이트 계산:`, {
+      memberId,
+      oldStats: { wins: memberData.total_wins, losses: memberData.total_losses, tierScore: oldTierScore },
+      updates,
+      newTierScore: updates.tier_score
+    })
 
     // 통계 업데이트 실행
     const { error: updateError } = await (supabase as any)
@@ -370,10 +477,17 @@ const updateMemberStats = async (
       .eq('id', memberId)
 
     if (updateError) {
-      console.error('멤버 통계 업데이트 오류:', updateError)
+      const error = `통계 업데이트 실패: ${updateError.message}`
+      console.error('❌', error, { memberId, updates, updateError })
+      return { success: false, error }
     }
+
+    console.log(`✅ 멤버 통계 업데이트 완료:`, { memberId, updatedFields: Object.keys(updates) })
+    return { success: true }
   } catch (error) {
-    console.error('멤버 통계 업데이트 중 예외:', error)
+    const errorMessage = `통계 업데이트 중 예외: ${error instanceof Error ? error.message : String(error)}`
+    console.error('❌', errorMessage, { memberId, error })
+    return { success: false, error: errorMessage }
   }
 }
 
@@ -556,6 +670,8 @@ export const getMatchBySessionId = async (sessionId: string): Promise<Match | nu
 
 export const deleteMatchResult = async (matchId: string): Promise<boolean> => {
   try {
+    console.log('🗑️ 매치 삭제 시작:', matchId)
+    
     // 매치 정보와 매치 멤버들을 조회하여 통계 롤백에 필요한 데이터 수집
     const { data: match, error: matchError } = await supabase
       .from('matches')
@@ -573,13 +689,22 @@ export const deleteMatchResult = async (matchId: string): Promise<boolean> => {
       .single()
 
     if (matchError || !match) {
-      console.error('매치 정보 조회 오류:', matchError)
+      console.error('❌ 매치 정보 조회 오류:', matchError)
       return false
     }
+    
+    console.log('🔍 삭제 대상 매치 정보:', {
+      matchId,
+      winner: (match as any).winner,
+      memberCount: (match as any).match_members?.length || 0
+    })
 
     // 플레이어 통계 롤백
     const matchData = match as any
     const matchMembers = matchData.match_members || []
+    
+    console.log('🔄 멤버 통계 롤백 시작')
+    const rollbackErrors: string[] = []
     
     for (const member of matchMembers) {
       const memberInfo = member as any
@@ -587,7 +712,16 @@ export const deleteMatchResult = async (matchId: string): Promise<boolean> => {
                       (memberInfo.team_side === 'team2' && matchData.winner === 'team2')
       const isMVP = false // MVP 기능 비활성화
       
-      await rollbackMemberStats(memberInfo.team_member_id, memberInfo.position, isWinner, isMVP)
+      const result = await rollbackMemberStats(memberInfo.team_member_id, memberInfo.position, isWinner, isMVP)
+      if (!result.success) {
+        rollbackErrors.push(`${memberInfo.team_member_id}: ${result.error}`)
+      }
+    }
+    
+    if (rollbackErrors.length > 0) {
+      console.error('⚠️ 일부 멤버 통계 롤백 실패:', rollbackErrors)
+    } else {
+      console.log('✅ 모든 멤버 통계 롤백 완료')
     }
 
     // 매치와 연관된 match_members도 함께 삭제
@@ -612,9 +746,35 @@ export const deleteMatchResult = async (matchId: string): Promise<boolean> => {
       return false
     }
 
+    console.log('✅ 매치 삭제 및 통계 롤백 완료')
+    
+    // 최종 검증: 롤백된 통계 확인
+    console.log('🔍 삭제 후 통계 검증 시작')
+    const matchDetails = match as any
+    const deletedMatchMembers = matchDetails.match_members || []
+    
+    for (const member of deletedMatchMembers) {
+      const memberInfo = member as any
+      try {
+        const { data: updatedMember, error } = await supabase
+          .from('team_members')
+          .select('total_wins, total_losses, tier_score, nickname')
+          .eq('id', memberInfo.team_member_id)
+          .single()
+          
+        if (error || !updatedMember) {
+          console.error(`⚠️ 삭제 후 검증 실패 - ${memberInfo.team_member_id}:`, error)
+        } else {
+          console.log(`✅ ${(updatedMember as any).nickname}: W${(updatedMember as any).total_wins} L${(updatedMember as any).total_losses} TS:${Math.round((updatedMember as any).tier_score)}`)
+        }
+      } catch (error) {
+        console.error(`⚠️ 삭제 후 검증 예외 - ${memberInfo.team_member_id}:`, error)
+      }
+    }
+    
     return true
   } catch (error) {
-    console.error('매치 삭제 중 예외:', error)
+    console.error('❌ 매치 삭제 중 예외:', error)
     return false
   }
 }
@@ -624,8 +784,17 @@ const rollbackMemberStats = async (
   position: Position,
   wasWinner: boolean,
   wasMVP: boolean
-): Promise<void> => {
+): Promise<{ success: boolean; error?: string }> => {
   try {
+    console.log(`🔄 멤버 통계 롤백 시작:`, { memberId, position, wasWinner, wasMVP })
+    
+    // 멤버 ID 검증
+    if (!memberId || memberId === 'undefined') {
+      const error = `잘못된 멤버 ID: ${memberId}`
+      console.error('❌', error)
+      return { success: false, error }
+    }
+
     // 현재 멤버 정보 조회
     const { data: member, error: memberError } = await supabase
       .from('team_members')
@@ -634,9 +803,17 @@ const rollbackMemberStats = async (
       .single()
 
     if (memberError || !member) {
-      console.error('멤버 통계 롤백용 정보 조회 오류:', memberError)
-      return
+      const error = `멤버 정보 조회 실패: ${memberError?.message || '멤버를 찾을 수 없음'}`
+      console.error('❌', error, { memberId, memberError })
+      return { success: false, error }
     }
+
+    console.log(`🔍 롤백 대상 멤버 정보:`, {
+      memberId,
+      nickname: (member as any).nickname,
+      currentWins: (member as any).total_wins,
+      currentLosses: (member as any).total_losses
+    })
 
     // 통계 롤백 준비
     const memberData = member as any
@@ -677,7 +854,15 @@ const rollbackMemberStats = async (
       subPositionWins: updates.sub_position_wins !== undefined ? updates.sub_position_wins : memberData.sub_position_wins
     }
 
+    const oldTierScore = memberData.tier_score
     updates.tier_score = calculateTierScore(memberData.tier as TierType, newStats)
+
+    console.log(`📉 통계 롤백 계산:`, {
+      memberId,
+      oldStats: { wins: memberData.total_wins, losses: memberData.total_losses, tierScore: oldTierScore },
+      updates,
+      newTierScore: updates.tier_score
+    })
 
     // 통계 롤백 실행
     const { error: updateError } = await (supabase as any)
@@ -686,10 +871,17 @@ const rollbackMemberStats = async (
       .eq('id', memberId)
 
     if (updateError) {
-      console.error('멤버 통계 롤백 오류:', updateError)
+      const error = `통계 롤백 실패: ${updateError.message}`
+      console.error('❌', error, { memberId, updates, updateError })
+      return { success: false, error }
     }
+
+    console.log(`✅ 멤버 통계 롤백 완료:`, { memberId, rolledBackFields: Object.keys(updates) })
+    return { success: true }
   } catch (error) {
-    console.error('멤버 통계 롤백 중 예외:', error)
+    const errorMessage = `통계 롤백 중 예외: ${error instanceof Error ? error.message : String(error)}`
+    console.error('❌', errorMessage, { memberId, error })
+    return { success: false, error: errorMessage }
   }
 }
 
@@ -1114,7 +1306,18 @@ export const updateMatchResult = async (
   }
 ): Promise<boolean> => {
   try {
-    console.log('매치 업데이트 시작:', sessionId)
+    console.log('🔄 매치 업데이트 시작:', sessionId)
+    
+    // 모든 멤버 ID 검증
+    const allMemberIds = [...matchData.team1, ...matchData.team2].map(player => player.memberId)
+    const memberValidation = await validateMemberIds(allMemberIds)
+    
+    if (memberValidation.invalid.length > 0) {
+      console.error('❌ 잘못된 멤버 ID가 발견됨:', memberValidation.invalid)
+      return false
+    }
+    
+    console.log('✅ 모든 멤버 ID 검증 완료:', { validCount: memberValidation.valid.length })
     
     // 1. 기존 매치 정보 조회
     const existingMatch = await getMatchBySessionId(sessionId)
@@ -1129,20 +1332,33 @@ export const updateMatchResult = async (
     console.log('🔄 기존 통계 롤백 시작')
     const oldTeam1Winners = existingMatch.winner === 'team1'
     const oldTeam2Winners = existingMatch.winner === 'team2'
+    const rollbackErrors: string[] = []
 
     // 기존 team1 멤버들의 통계 롤백
     for (const member of existingMatch.team1.members) {
       const wasWinner = oldTeam1Winners
       const wasMVP = member.memberId === existingMatch.mvpMemberId
-      await rollbackMemberStats(member.memberId, member.position, wasWinner, wasMVP)
+      const result = await rollbackMemberStats(member.memberId, member.position, wasWinner, wasMVP)
+      if (!result.success) {
+        rollbackErrors.push(`OldTeam1 ${member.memberId}: ${result.error}`)
+      }
     }
 
     // 기존 team2 멤버들의 통계 롤백
     for (const member of existingMatch.team2.members) {
       const wasWinner = oldTeam2Winners
       const wasMVP = member.memberId === existingMatch.mvpMemberId
-      await rollbackMemberStats(member.memberId, member.position, wasWinner, wasMVP)
+      const result = await rollbackMemberStats(member.memberId, member.position, wasWinner, wasMVP)
+      if (!result.success) {
+        rollbackErrors.push(`OldTeam2 ${member.memberId}: ${result.error}`)
+      }
     }
+    
+    if (rollbackErrors.length > 0) {
+      console.error('❌ 기존 통계 롤백 일부 실패:', rollbackErrors)
+      return false // 롤백 실패 시 중단
+    }
+    console.log('✅ 기존 통계 롤백 완료')
 
     // 3. 매치 테이블 업데이트 (승리팀만)
     const { error: matchUpdateError } = await (supabase as any)
@@ -1225,25 +1441,69 @@ export const updateMatchResult = async (
 
     const newTeam1Winners = matchData.winningTeam === 'team1'
     const newTeam2Winners = matchData.winningTeam === 'team2'
+    const updateErrors: string[] = []
 
     // 새로운 team1 멤버들의 통계 적용
     for (const member of matchData.team1) {
       const isWinner = newTeam1Winners
       const isMVP = member.memberId === newMvpMemberId
-      await updateMemberStats(member.memberId, member.position, isWinner, isMVP)
+      const result = await updateMemberStats(member.memberId, member.position, isWinner, isMVP)
+      if (!result.success) {
+        updateErrors.push(`NewTeam1 ${member.memberId}: ${result.error}`)
+      }
     }
 
     // 새로운 team2 멤버들의 통계 적용
     for (const member of matchData.team2) {
       const isWinner = newTeam2Winners
       const isMVP = member.memberId === newMvpMemberId
-      await updateMemberStats(member.memberId, member.position, isWinner, isMVP)
+      const result = await updateMemberStats(member.memberId, member.position, isWinner, isMVP)
+      if (!result.success) {
+        updateErrors.push(`NewTeam2 ${member.memberId}: ${result.error}`)
+      }
     }
+    
+    if (updateErrors.length > 0) {
+      console.error('❌ 새로운 통계 적용 일부 실패:', updateErrors)
+      return false // 업데이트 실패 시 중단
+    }
+    console.log('✅ 새로운 통계 적용 완료')
 
-    console.log('매치 업데이트 및 통계 갱신 완료')
+    console.log('✅ 매치 업데이트 및 통계 갱신 완룼 완료')
+    
+    // 최종 검증: 업데이트된 통계 확인
+    console.log('🔍 최종 통계 검증 시작')
+    let finalValidation = true
+    
+    for (const member of [...matchData.team1, ...matchData.team2]) {
+      try {
+        const { data: updatedMember, error } = await supabase
+          .from('team_members')
+          .select('total_wins, total_losses, tier_score, nickname')
+          .eq('id', member.memberId)
+          .single()
+          
+        if (error || !updatedMember) {
+          console.error(`⚠️ 최종 검증 실패 - ${member.memberId}:`, error)
+          finalValidation = false
+        } else {
+          console.log(`✅ ${(updatedMember as any).nickname}: W${(updatedMember as any).total_wins} L${(updatedMember as any).total_losses} TS:${Math.round((updatedMember as any).tier_score)}`)
+        }
+      } catch (error) {
+        console.error(`⚠️ 최종 검증 예외 - ${member.memberId}:`, error)
+        finalValidation = false
+      }
+    }
+    
+    if (finalValidation) {
+      console.log('✅ 모든 멤버 통계 업데이트 최종 확인 완료')
+    } else {
+      console.error('⚠️ 일부 멤버 통계 검증에 문제가 있습니다')
+    }
+    
     return true
   } catch (error) {
-    console.error('매치 업데이트 중 예외:', error)
+    console.error('❌ 매치 업데이트 중 예외:', error)
     return false
   }
 }

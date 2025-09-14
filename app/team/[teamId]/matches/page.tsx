@@ -90,25 +90,26 @@ export default function TeamMatchesPage() {
   }
 
   const handleDeleteMatch = async (matchId: string) => {
-    if (!confirm('이 경기 결과를 정말 삭제하시겠습니까?\n삭제된 경기는 복구할 수 없으며, 모든 플레이어의 통계에서 제외됩니다.')) {
+    if (!confirm('⚠️ 경기 결과 삭제 확인\n\n이 경기 결과를 삭제하면:\n• 모든 플레이어의 통계가 롤백됩니다\n• 승률과 티어 점수가 재계산됩니다\n• 삭제 후 복구할 수 없습니다\n\n삭제하시겠습니까?')) {
       return
     }
 
     setDeletingMatchId(matchId)
     
     try {
+      console.log('🗑️ 경기 삭제 시작:', matchId)
       const success = await deleteMatchResult(matchId)
       
       if (success) {
         // 매치 목록에서 삭제된 매치 제거
         setMatches(prevMatches => prevMatches.filter(match => match.id !== matchId))
-        alert('경기 결과가 성공적으로 삭제되었습니다.')
+        alert('✅ 경기 결과 삭제 완료!\n\n• 경기 결과가 삭제되었습니다\n• 모든 멤버의 통계가 롤백되었습니다\n• 승률과 티어 점수가 재계산되었습니다')
       } else {
-        alert('경기 결과 삭제에 실패했습니다. 다시 시도해주세요.')
+        alert('❌ 경기 결과 삭제에 실패했습니다.\n\n다시 시도해주세요.')
       }
     } catch (error) {
-      console.error('경기 삭제 중 오류:', error)
-      alert('경기 결과 삭제 중 오류가 발생했습니다.')
+      console.error('❌ 경기 삭제 중 오류:', error)
+      alert('❌ 경기 결과 삭제 중 오류가 발생했습니다.\n\n오류: ' + (error instanceof Error ? error.message : String(error)))
     } finally {
       setDeletingMatchId(null)
     }

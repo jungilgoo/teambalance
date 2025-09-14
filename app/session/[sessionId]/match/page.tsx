@@ -348,6 +348,7 @@ export default function MatchResultPage() {
   const [team1Data, setTeam1Data] = useState<TeamMember[]>([])
   const [team2Data, setTeam2Data] = useState<TeamMember[]>([])
   const [isSaving, setIsSaving] = useState(false)
+  const [savingProgress, setSavingProgress] = useState('')
 
   // 실시간 세션 관리 (Progressive Loading - 2단계에서 활성화)
   const {
@@ -688,9 +689,11 @@ export default function MatchResultPage() {
     }
 
     setIsSaving(true)
+    setSavingProgress('💾 경기 결과 준비 중...')
     
     try {
       // 1. 세션 상태 업데이트
+      setSavingProgress('🔄 세션 상태 업데이트 중...')
       const sessionSuccess = await updateSessionResult(sessionId, winner)
       
       if (!sessionSuccess) {
@@ -702,6 +705,7 @@ export default function MatchResultPage() {
       
       if (isEditMode) {
         // 수정 모드: 기존 매치 업데이트
+        setSavingProgress('🔄 기존 경기 결과 업데이트 중...')
         console.log('수정 모드: 기존 매치 업데이트')
         success = await updateMatchResult(sessionId, {
           winningTeam: winner,
@@ -722,8 +726,13 @@ export default function MatchResultPage() {
             assists: (member as any).assists || 0
           }))
         })
+        
+        if (success) {
+          setSavingProgress('📊 멤버 통계 업데이트 완료!')
+        }
       } else {
         // 새로 생성 모드: 새로운 매치 생성
+        setSavingProgress('🏆 새로운 경기 결과 저장 중...')
         console.log('생성 모드: 새로운 매치 생성')
         const matchId = await saveMatchResult({
           sessionId,
@@ -747,13 +756,25 @@ export default function MatchResultPage() {
           }))
         })
         success = !!matchId
+        
+        if (success) {
+          setSavingProgress('📊 멤버 통계 업데이트 완룼!')
+        }
       }
 
       if (!success) {
         throw new Error(isEditMode ? '경기 결과 수정에 실패했습니다.' : '경기 결과 저장에 실패했습니다.')
       }
       
-alert(isEditMode ? '경기 결과가 수정되었습니다!' : '경기 결과가 저장되었습니다! 멤버 통계가 업데이트되었습니다.')
+      setSavingProgress('✅ 완료! 통계가 성공적으로 업데이트되었습니다.')
+      
+      // 짧은 지연 후 성공 메시지 표시
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      alert(isEditMode 
+        ? '✅ 경기 결과가 성공적으로 수정되었습니다!\n• 모든 멤버의 통계가 업데이트되었습니다\n• 승률과 티어 점수가 재계산되었습니다' 
+        : '✅ 경기 결과가 성공적으로 저장되었습니다!\n• 모든 멤버의 통계가 업데이트되었습니다\n• 승률과 티어 점수가 자동 계산되었습니다'
+      )
       router.push(`/team/${realtimeSession?.teamId}`)
     } catch (error) {
       console.error('경기 결과 저장 실패:', error)
@@ -761,6 +782,7 @@ alert(isEditMode ? '경기 결과가 수정되었습니다!' : '경기 결과가
       alert(`오류: ${errorMessage}`)
     } finally {
       setIsSaving(false)
+      setSavingProgress('')
     }
   }
 
@@ -874,8 +896,16 @@ alert(isEditMode ? '경기 결과가 수정되었습니다!' : '경기 결과가
                 disabled={isSaving || !winner}
                 className="flex items-center gap-2"
               >
-                <Save className="w-4 h-4" />
-{isSaving ? '저장 중...' : (isEditMode ? '수정 저장' : '결과 저장')}
+                {isSaving ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {isSaving ? (
+                  <span className="text-sm">{savingProgress || '저장 중...'}</span>
+                ) : (
+                  isEditMode ? '수정 저장' : '결과 저장'
+                )}
               </Button>
             </div>
           </div>
@@ -994,8 +1024,19 @@ alert(isEditMode ? '경기 결과가 수정되었습니다!' : '경기 결과가
               size="lg"
               className="px-12 h-12 text-lg"
             >
-              <Save className="w-5 h-5 mr-2" />
-{isSaving ? '저장 중...' : (isEditMode ? '경기 결과 수정' : '경기 결과 저장')}
+              {isSaving ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+              ) : (
+                <Save className="w-5 h-5 mr-2" />
+              )}
+              {isSaving ? (
+                <div className="text-center">
+                  <div className="font-medium">{isEditMode ? '수정 중...' : '저장 중...'}</div>
+                  <div className="text-xs opacity-90">{savingProgress}</div>
+                </div>
+              ) : (
+                isEditMode ? '경기 결과 수정' : '경기 결과 저장'
+              )}
             </Button>
           </div>
         </div>

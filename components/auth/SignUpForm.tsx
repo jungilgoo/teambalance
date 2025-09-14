@@ -71,7 +71,7 @@ const SignUpForm = memo(function SignUpForm({
           max={new Date().toISOString().split('T')[0]} // 오늘 이후 날짜 선택 방지
         />
         {!birthDate && (
-          <label className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+          <label className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
             생년월일
           </label>
         )}
