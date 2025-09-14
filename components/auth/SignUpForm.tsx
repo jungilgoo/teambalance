@@ -61,10 +61,7 @@ const SignUpForm = memo(function SignUpForm({
         required
       />
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          생년월일
-        </label>
+      <div className="relative">
         <Input
           type="date"
           value={birthDate}
@@ -73,6 +70,11 @@ const SignUpForm = memo(function SignUpForm({
           required
           max={new Date().toISOString().split('T')[0]} // 오늘 이후 날짜 선택 방지
         />
+        {!birthDate && (
+          <label className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+            생년월일
+          </label>
+        )}
       </div>
 
       {/* 닉네임 입력 (선택사항) */}
