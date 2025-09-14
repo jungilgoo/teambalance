@@ -67,47 +67,58 @@ export function validatePositionCandidates(candidates: PositionCandidates): { va
   return { valid: true, message: '모든 포지션에 후보가 있습니다.' }
 }
 
-// 백트래킹으로 유효한 포지션 할당 생성 (10명 모두에게 할당)
+// 탐욕적 포지션 할당 생성 (각 포지션에 2명씩, 총 10명)
 export function generateValidAssignments(
   candidates: PositionCandidates, 
   maxAssignments: number = 300
 ): PositionAssignment[] {
   const positions: Position[] = ['top', 'jungle', 'mid', 'adc', 'support']
-  const assignments: PositionAssignment[] = []
+  console.log('🎯 탐욕적 할당 알고리즘 시작')
   
-  function backtrack(
-    positionIndex: number,
-    currentAssignment: PositionAssignment,
-    usedMembers: Set<string>
-  ) {
-    if (assignments.length >= maxAssignments) return // 성능 제한
+  // 각 포지션별 후보 수로 정렬 (적은 후보부터 우선 할당)
+  const sortedPositions = positions.sort((a, b) => 
+    candidates[a].length - candidates[b].length
+  )
+  
+  console.log('📊 포지션별 우선순위:', sortedPositions.map(pos => 
+    `${pos}: ${candidates[pos].length}명`).join(', '))
+
+  const assignment: PositionAssignment = {}
+  const usedMembers = new Set<string>()
+
+  // 각 포지션에 2명씩 할당
+  for (const position of sortedPositions) {
+    const availableCandidates = candidates[position].filter(member => 
+      !usedMembers.has(member.id)
+    )
     
-    if (positionIndex === positions.length * 2) { 
-      // 각 포지션마다 2명씩 총 10명 할당 완료
-      assignments.push({ ...currentAssignment })
-      return
+    console.log(`🔄 ${position} 포지션: ${availableCandidates.length}명 후보 중 2명 선택`)
+    
+    if (availableCandidates.length < 2) {
+      console.log(`❌ ${position} 포지션에 충분한 후보 없음 (${availableCandidates.length}/2)`)
+      return [] // 할당 실패
     }
-
-    const position = positions[Math.floor(positionIndex / 2)] // 각 포지션에 2명씩
-    const positionCandidates = candidates[position]
-
-    for (const member of positionCandidates) {
-      if (!usedMembers.has(member.id)) {
-        // 이 멤버를 현재 포지션에 할당
-        currentAssignment[member.id] = position
-        usedMembers.add(member.id)
-        
-        backtrack(positionIndex + 1, currentAssignment, usedMembers)
-        
-        // 백트래킹: 할당 해제
-        delete currentAssignment[member.id]
-        usedMembers.delete(member.id)
-      }
+    
+    // 상위 2명 선택 (티어 점수 기준)
+    const topCandidates = availableCandidates
+      .sort((a, b) => b.stats.tierScore - a.stats.tierScore)
+      .slice(0, 2)
+    
+    for (const member of topCandidates) {
+      assignment[member.id] = position
+      usedMembers.add(member.id)
     }
+    
+    console.log(`✅ ${position} 할당 완료: ${topCandidates.map(m => m.nickname).join(', ')}`)
   }
 
-  backtrack(0, {}, new Set())
-  return assignments
+  if (Object.keys(assignment).length === 10) {
+    console.log('🎉 탐욕적 할당 성공: 10명 모두 할당됨')
+    return [assignment]
+  } else {
+    console.log(`❌ 할당 실패: ${Object.keys(assignment).length}/10명만 할당됨`)
+    return []
+  }
 }
 
 // 특정 포지션 할당에서 최적 팀 분할 (10명 모두 포지션 할당됨)
