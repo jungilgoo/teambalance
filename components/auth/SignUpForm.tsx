@@ -61,15 +61,19 @@ const SignUpForm = memo(function SignUpForm({
         required
       />
 
-      <Input
-        type="date"
-        placeholder="생년월일"
-        value={birthDate}
-        onChange={(e) => onBirthDateChange(e.target.value)}
-        className="h-12"
-        required
-        max={new Date().toISOString().split('T')[0]} // 오늘 이후 날짜 선택 방지
-      />
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          생년월일
+        </label>
+        <Input
+          type="date"
+          value={birthDate}
+          onChange={(e) => onBirthDateChange(e.target.value)}
+          className="h-12"
+          required
+          max={new Date().toISOString().split('T')[0]} // 오늘 이후 날짜 선택 방지
+        />
+      </div>
 
       {/* 닉네임 입력 (선택사항) */}
       <div className="space-y-2">
@@ -118,6 +122,11 @@ const SignUpForm = memo(function SignUpForm({
         className="h-12"
         required
       />
+
+      {/* 개인정보 사용 안내 */}
+      <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+        이메일과 생년월일은 비밀번호 찾기에만 사용됩니다.
+      </p>
 
       {/* 전체 에러 메시지 */}
       {error && (
