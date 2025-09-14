@@ -81,6 +81,11 @@ function PlayerNameColumn({
     
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', member.id)
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      member,
+      fromTeam: team,
+      index
+    }))
     
     // 드래그 이미지 커스터마이징
     const dragImage = e.currentTarget.cloneNode(true) as HTMLElement
@@ -355,6 +360,10 @@ export default function MatchResultPage() {
   const [team2Data, setTeam2Data] = useState<TeamMember[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [savingProgress, setSavingProgress] = useState('')
+  
+  // 팀 간 드래그 상태 관리
+  const [draggedPlayer, setDraggedPlayer] = useState<{member: TeamMember, fromTeam: 'team1' | 'team2'} | null>(null)
+  const [teamDropTarget, setTeamDropTarget] = useState<'team1' | 'team2' | null>(null)
 
   // 실시간 세션 관리 (Progressive Loading - 2단계에서 활성화)
   const {
@@ -666,6 +675,56 @@ export default function MatchResultPage() {
     })
   }
 
+  // 팀 간 이동 처리 함수
+  const handleCrossTeamDrop = (e: React.DragEvent, targetTeam: 'team1' | 'team2') => {
+    e.preventDefault()
+    
+    try {
+      const dragDataJson = e.dataTransfer.getData('application/json')
+      if (!dragDataJson) return
+      
+      const dragData = JSON.parse(dragDataJson)
+      const { member, fromTeam, index } = dragData
+      
+      // 같은 팀이면 팀 간 이동 처리하지 않음
+      if (fromTeam === targetTeam) return
+      
+      const fromData = fromTeam === 'team1' ? team1Data : team2Data
+      const toData = targetTeam === 'team1' ? team1Data : team2Data
+      
+      // 5vs5 구성 확인
+      if (toData.length >= 5) {
+        alert('각 팀은 최대 5명까지만 배정할 수 있습니다.')
+        return
+      }
+      
+      // 원본 팀에서 제거
+      const updatedFromData = fromData.filter(m => m.id !== member.id)
+      
+      // 대상 팀에 추가 (포지션 자동 배정)
+      const updatedToData = [...toData, member].map((m, index) => ({
+        ...m,
+        position: positionOrder[index] || m.mainPosition
+      }))
+      
+      // 상태 업데이트
+      if (fromTeam === 'team1') {
+        setTeam1Data(updatedFromData.map((m, index) => ({ ...m, position: positionOrder[index] || m.mainPosition })))
+      } else {
+        setTeam2Data(updatedFromData.map((m, index) => ({ ...m, position: positionOrder[index] || m.mainPosition })))
+      }
+      
+      if (targetTeam === 'team1') {
+        setTeam1Data(updatedToData)
+      } else {
+        setTeam2Data(updatedToData)
+      }
+      
+      console.log(`${member.nickname}이(가) ${fromTeam}에서 ${targetTeam}으로 이동했습니다.`)
+    } catch (error) {
+      console.error('팀 간 이동 처리 오류:', error)
+    }
+  }
 
   const handleSaveResults = async () => {
     if (!winner) {
@@ -892,7 +951,8 @@ export default function MatchResultPage() {
                   )}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  {isEditMode ? '경기 결과를 수정하고 저장하세요' : '각 플레이어의 챔피언과 KDA를 입력하세요'}
+                  {isEditMode ? '경기 결과를 수정하고 저장하세요.' : '각 플레이어의 챔피언과 KDA를 입력하세요.'} 
+                  <span className="font-medium text-green-700 dark:text-green-400">선수를 다른 팀으로 드래그하여 팀 이동 가능합니다.</span>
                   {isSecondaryLoading && (
                     <span className="ml-2 text-blue-600">• 실시간 기능 로딩 중...</span>
                   )}
@@ -966,11 +1026,38 @@ export default function MatchResultPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
             {/* 블루팀 */}
-            <Card className="border-blue-200 dark:border-blue-800">
+            <Card 
+              className={`border-blue-200 dark:border-blue-800 transition-all duration-300 ${
+                teamDropTarget === 'team1' ? 
+                'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-300 dark:border-green-600 shadow-lg scale-[1.02]' : 
+                ''
+              }`}
+              onDragOver={(e) => {
+                e.preventDefault()
+                setTeamDropTarget('team1')
+              }}
+              onDragLeave={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                const x = e.clientX
+                const y = e.clientY
+                if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                  setTeamDropTarget(null)
+                }
+              }}
+              onDrop={(e) => {
+                handleCrossTeamDrop(e, 'team1')
+                setTeamDropTarget(null)
+              }}
+            >
               <CardHeader className="bg-blue-50 dark:bg-blue-900/20">
                 <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
                   <Users className="w-5 h-5" />
-                  블루팀
+                  블루팀 ({team1Data.length}/5)
+                  {teamDropTarget === 'team1' && (
+                    <span className="ml-2 text-green-600 font-normal text-sm animate-pulse">
+                      ← 선수 추가됨
+                    </span>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -996,11 +1083,38 @@ export default function MatchResultPage() {
             </Card>
 
             {/* 레드팀 */}
-            <Card className="border-red-200 dark:border-red-800">
+            <Card 
+              className={`border-red-200 dark:border-red-800 transition-all duration-300 ${
+                teamDropTarget === 'team2' ? 
+                'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-300 dark:border-green-600 shadow-lg scale-[1.02]' : 
+                ''
+              }`}
+              onDragOver={(e) => {
+                e.preventDefault()
+                setTeamDropTarget('team2')
+              }}
+              onDragLeave={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                const x = e.clientX
+                const y = e.clientY
+                if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                  setTeamDropTarget(null)
+                }
+              }}
+              onDrop={(e) => {
+                handleCrossTeamDrop(e, 'team2')
+                setTeamDropTarget(null)
+              }}
+            >
               <CardHeader className="bg-red-50 dark:bg-red-900/20">
                 <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-300">
                   <Users className="w-5 h-5" />
-                  레드팀
+                  레드팀 ({team2Data.length}/5)
+                  {teamDropTarget === 'team2' && (
+                    <span className="ml-2 text-green-600 font-normal text-sm animate-pulse">
+                      ← 선수 추가됨
+                    </span>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
