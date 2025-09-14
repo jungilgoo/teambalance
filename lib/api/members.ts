@@ -41,7 +41,7 @@ export const getTeamMembers = async (
       nickname: member.nickname,
       tier: member.tier as TierType,
       mainPosition: member.main_position as Position,
-      subPositions: member.sub_position ? [member.sub_position as Position] : [],
+      subPositions: member.sub_positions || [],
       stats: {
         totalWins: member.total_wins,
         totalLosses: member.total_losses,
@@ -104,7 +104,7 @@ export const addTeamMember = async (
         nickname: validatedNickname,
         tier: validatedTier,
         main_position: validatedMainPosition,
-        sub_position: subPositions[0] || 'adc',
+        sub_positions: subPositions,
         tier_score: tierScore,
         status,
         join_type: 'public',
@@ -128,7 +128,7 @@ export const addTeamMember = async (
       nickname: member.nickname,
       tier: member.tier as TierType,
       mainPosition: member.main_position as Position,
-      subPositions: member.sub_position ? [member.sub_position as Position] : [],
+      subPositions: member.sub_positions || [],
       stats: {
         totalWins: member.total_wins,
         totalLosses: member.total_losses,
@@ -231,7 +231,7 @@ export const joinPublicTeam = async (
           nickname,
           tier,
           main_position: mainPosition,
-          sub_position: subPositions[0] || 'adc',
+          sub_positions: subPositions,
           tier_score: tierScore,
           joined_at: new Date().toISOString(),
           approved_at: null,  // 승인 시간 초기화
@@ -256,7 +256,7 @@ export const joinPublicTeam = async (
         nickname: updatedMember.nickname,
         tier: updatedMember.tier as TierType,
         mainPosition: updatedMember.main_position as Position,
-        subPositions: [updatedMember.sub_position],
+        subPositions: updatedMember.sub_positions || [],
         stats: {
           totalWins: updatedMember.total_wins,
           totalLosses: updatedMember.total_losses,
@@ -451,7 +451,7 @@ export const getPendingJoinRequests = async (teamId: string): Promise<TeamMember
       nickname: member.nickname,
       tier: member.tier as TierType,
       mainPosition: member.main_position as Position,
-      subPositions: member.sub_position ? [member.sub_position as Position] : [],
+      subPositions: member.sub_positions || [],
       stats: {
         totalWins: member.total_wins,
         totalLosses: member.total_losses,
@@ -554,7 +554,7 @@ export const approveJoinRequest = async (
         nickname: updatedMember.nickname,
         tier: updatedMember.tier as TierType,
         mainPosition: updatedMember.main_position as Position,
-        subPositions: updatedMember.sub_position ? [updatedMember.sub_position as Position] : [],
+        subPositions: updatedMember.sub_positions || [],
         stats: {
           totalWins: updatedMember.total_wins,
           totalLosses: updatedMember.total_losses,
@@ -770,7 +770,7 @@ export const updateMemberPositions = async (
     // 먼저 현재 멤버 정보를 조회
     const { data: currentMember, error: selectError } = await supabase
       .from('team_members')
-      .select('id, main_position, sub_position')
+      .select('id, main_position, sub_positions')
       .eq('id', memberId)
       .single()
 
@@ -790,16 +790,15 @@ export const updateMemberPositions = async (
     // 중복 제거
     finalSubPositions = [...new Set(finalSubPositions)]
     
-    // 레거시 sub_position 필드용 - 첫 번째 서브 포지션 또는 메인과 다른 기본값
-    let legacySubPosition = finalSubPositions[0]
-    if (!legacySubPosition) {
+    // 최소 1개 서브 포지션 보장
+    if (finalSubPositions.length === 0) {
       const availablePositions: Position[] = ['top', 'jungle', 'mid', 'adc', 'support']
-      legacySubPosition = availablePositions.find(pos => pos !== mainPosition) || 'support'
+      finalSubPositions = [availablePositions.find(pos => pos !== mainPosition) || 'support']
     }
 
     const updateData = {
       main_position: mainPosition,
-      sub_position: legacySubPosition
+      sub_positions: finalSubPositions
     }
 
     console.log('업데이트할 데이터:', updateData)

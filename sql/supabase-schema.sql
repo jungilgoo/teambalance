@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS team_members (
     nickname TEXT NOT NULL,
     tier TEXT NOT NULL,
     main_position TEXT CHECK (main_position IN ('top', 'jungle', 'mid', 'adc', 'support')) NOT NULL,
-    sub_position TEXT CHECK (sub_position IN ('top', 'jungle', 'mid', 'adc', 'support')) NOT NULL,
+    sub_positions TEXT[] DEFAULT ARRAY['support'], -- 다중 부포지션 지원
     
     -- 승인 시스템
     status TEXT CHECK (status IN ('pending', 'active', 'rejected', 'kicked')) DEFAULT 'active',
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS team_members (
     
     -- 제약 조건
     UNIQUE(team_id, user_id), -- 한 팀에 한 번만 참가 가능
-    CHECK (main_position != sub_position) -- 주/부 포지션이 달라야 함
+    CHECK (main_position != ALL(sub_positions)) -- 주 포지션이 부포지션 배열에 포함되지 않도록
 );
 
 -- 4. team_invites 테이블
