@@ -7,6 +7,7 @@ interface SignUpFormProps {
   email: string
   password: string
   username: string
+  birthDate: string
   usernameError: string
   usernameSuggestions: string[]
   error: string
@@ -15,6 +16,7 @@ interface SignUpFormProps {
   onEmailChange: (value: string) => void
   onPasswordChange: (value: string) => void
   onUsernameChange: (value: string) => void
+  onBirthDateChange: (value: string) => void
   onSubmit: () => void
   onToggleMode: () => void
   onSelectSuggestion: (suggestion: string) => void
@@ -25,6 +27,7 @@ const SignUpForm = memo(function SignUpForm({
   email,
   password,
   username,
+  birthDate,
   usernameError,
   usernameSuggestions,
   error,
@@ -33,6 +36,7 @@ const SignUpForm = memo(function SignUpForm({
   onEmailChange,
   onPasswordChange,
   onUsernameChange,
+  onBirthDateChange,
   onSubmit,
   onToggleMode,
   onSelectSuggestion
@@ -55,6 +59,16 @@ const SignUpForm = memo(function SignUpForm({
         onChange={(e) => onEmailChange(e.target.value)}
         className="h-12"
         required
+      />
+
+      <Input
+        type="date"
+        placeholder="생년월일"
+        value={birthDate}
+        onChange={(e) => onBirthDateChange(e.target.value)}
+        className="h-12"
+        required
+        max={new Date().toISOString().split('T')[0]} // 오늘 이후 날짜 선택 방지
       />
 
       {/* 닉네임 입력 (선택사항) */}

@@ -15,6 +15,7 @@ export type Database = {
           email: string
           name: string
           username: string | null
+          birth_date: string | null
           avatar_url: string | null
           provider: 'email'
           created_at: string
@@ -24,6 +25,7 @@ export type Database = {
           email: string
           name: string
           username?: string | null
+          birth_date?: string | null
           avatar_url?: string | null
           provider: 'email'
           created_at?: string
@@ -33,6 +35,7 @@ export type Database = {
           email?: string
           name?: string
           username?: string | null
+          birth_date?: string | null
           avatar_url?: string | null
           provider?: 'email'
           created_at?: string

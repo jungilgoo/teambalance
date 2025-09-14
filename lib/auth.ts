@@ -27,6 +27,7 @@ interface SupabaseProfile {
   email: string
   name: string
   username?: string
+  birth_date?: string
   avatar_url?: string
   provider: string
   created_at: string
@@ -102,6 +103,7 @@ const mapProfileToUser = (profile: SupabaseProfile): User => ({
   email: profile.email,
   name: profile.name,
   username: profile.username || undefined,
+  birthDate: profile.birth_date ? new Date(profile.birth_date) : undefined,
   avatar: profile.avatar_url || undefined,
   provider: profile.provider as 'email',
   createdAt: new Date(profile.created_at)
@@ -223,7 +225,8 @@ export const signUp = async (
   password: string, 
   name: string, 
   username?: string, 
-  provider: 'email' = 'email'
+  provider: 'email' = 'email',
+  birthDate?: string
 ): Promise<User> => {
   try {
     console.log(`🔍 회원가입 시작 - Email: ${email}, Provider: ${provider}`)
@@ -298,15 +301,16 @@ export const signUp = async (
     console.log(`🔧 수동 프로필 생성 시작...`)
     
     // 트리거에 의존하지 않고 직접 프로필 생성
-    // PostgreSQL 컬럼 순서에 맞게 구성: id, email, name, avatar_url, provider, created_at, username
+    // PostgreSQL 컬럼 순서에 맞게 구성: id, email, name, username, birth_date, avatar_url, provider, created_at
     const profileData = {
       id: data.user.id,
       email: email,
       name: name,
+      username: username || null,
+      birth_date: birthDate || null,  // 생년월일 추가
       avatar_url: null,
-      provider: provider,  // 명시적 provider 설정 (정확한 위치)
-      created_at: new Date().toISOString(),  // 명시적으로 시간 설정
-      username: username || null  // 마지막에 위치 (Migration으로 추가됨)
+      provider: provider,  // 명시적 provider 설정
+      created_at: new Date().toISOString()  // 명시적으로 시간 설정
     }
     
     console.log(`📤 프로필 INSERT 데이터:`, profileData)
@@ -378,8 +382,11 @@ export const resetPassword = async (email: string): Promise<void> => {
     const { createSupabaseBrowser } = await import('./supabase')
     const supabase = createSupabaseBrowser()
     
-    const redirectUrl = `${window.location.origin}/reset-password`
-    console.log('🔗 리다이렉트 URL:', redirectUrl)
+    // 항상 프로덕션 URL 사용 (이메일에서 올바른 도메인으로 리다이렉트)
+    const productionUrl = 'https://teambalance-p7tb7p2a9-jungilgoos-projects.vercel.app'
+    const redirectUrl = `${productionUrl}/reset-password`
+    
+    console.log('🔗 리다이렉트 URL (강제 프로덕션):', redirectUrl)
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl
@@ -558,4 +565,38 @@ export const onAuthStateChange = (callback: (authState: AuthState) => void) => {
       }
     })
   })()
+}
+
+// 생년월일 기반 비밀번호 재설정
+export const resetPasswordWithBirth = async (
+  email: string, 
+  birthDate: string, 
+  newPassword: string
+): Promise<void> => {
+  try {
+    console.log('🔍 생년월일 기반 비밀번호 재설정 시작:', email)
+    
+    const response = await fetch('/api/auth/reset-password-with-birth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        birthDate,
+        newPassword
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || '비밀번호 재설정에 실패했습니다.')
+    }
+
+    console.log('✅ 비밀번호 재설정 성공')
+  } catch (error) {
+    console.error('❌ 비밀번호 재설정 오류:', error)
+    throw error
+  }
 }

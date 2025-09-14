@@ -4,6 +4,7 @@ export interface User {
   email: string
   name: string
   username?: string  // 게이머 닉네임 (선택사항, 3-20자, 영문/한글/숫자/_/- 허용)
+  birthDate?: Date  // 생년월일 (비밀번호 찾기용, 신규 가입자는 필수)
   avatar?: string
   provider: 'email'  // 이메일/닉네임 하이브리드 로그인만 지원
   createdAt: Date

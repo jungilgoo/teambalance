@@ -4,13 +4,14 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { hybridLogin, signUp, resetPassword } from '@/lib/auth'
+import { hybridLogin, signUp, resetPassword, resetPasswordWithBirth } from '@/lib/auth'
 import { validateUsername, suggestUsernames, checkUsernameExists } from '@/lib/supabase-api'
 import { useCallback, useMemo } from 'react'
 import { Shield, Gamepad2, Mail } from 'lucide-react'
 import LoginForm from '@/components/auth/LoginForm'
 import SignUpForm from '@/components/auth/SignUpForm'
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm'
+import ForgotPasswordWithBirthForm from '@/components/auth/ForgotPasswordWithBirthForm'
 
 function LoginContent() {
   const [isLoading, setIsLoading] = useState(false)
@@ -19,9 +20,14 @@ function LoginContent() {
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [username, setUsername] = useState('')
+  const [birthDate, setBirthDate] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [isForgotPassword, setIsForgotPassword] = useState(false)
   const [resetEmail, setResetEmail] = useState('')
+  const [resetBirthDate, setResetBirthDate] = useState('')
+  const [resetNewPassword, setResetNewPassword] = useState('')
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('')
+  const [useBirthMethod, setUseBirthMethod] = useState(true) // 생년월일 방식을 기본값으로
   
   // 닉네임 관련 상태 (회원가입 시에만 검증)
   const [usernameError, setUsernameError] = useState('')
@@ -43,31 +49,67 @@ function LoginContent() {
   const handleForgotPassword = useCallback(async () => {
     setIsLoading(true)
     try {
-      if (!resetEmail) {
-        alert('이메일을 입력해주세요.')
-        return
-      }
+      if (useBirthMethod) {
+        // 생년월일 기반 비밀번호 재설정
+        if (!resetEmail || !resetBirthDate || !resetNewPassword || !resetConfirmPassword) {
+          setError('모든 필드를 입력해주세요.')
+          return
+        }
 
-      await resetPassword(resetEmail)
-      alert('비밀번호 재설정 이메일을 발송했습니다. 이메일을 확인해주세요.')
-      setIsForgotPassword(false)
-      setResetEmail('')
+        if (resetNewPassword.length < 6) {
+          setError('비밀번호는 6자 이상이어야 합니다.')
+          return
+        }
+
+        if (resetNewPassword !== resetConfirmPassword) {
+          setError('비밀번호가 일치하지 않습니다.')
+          return
+        }
+
+        await resetPasswordWithBirth(resetEmail, resetBirthDate, resetNewPassword)
+        alert('비밀번호가 성공적으로 재설정되었습니다. 로그인해보세요.')
+        setIsForgotPassword(false)
+        setResetEmail('')
+        setResetBirthDate('')
+        setResetNewPassword('')
+        setResetConfirmPassword('')
+        setError('')
+      } else {
+        // 기존 이메일 방식
+        if (!resetEmail) {
+          setError('이메일을 입력해주세요.')
+          return
+        }
+
+        await resetPassword(resetEmail)
+        alert('비밀번호 재설정 이메일을 발송했습니다. 이메일을 확인해주세요.')
+        setIsForgotPassword(false)
+        setResetEmail('')
+      }
     } catch (error: unknown) {
       console.error('비밀번호 재설정 오류:', error)
       const errorMessage = error instanceof Error ? error.message : '비밀번호 재설정 요청에 실패했습니다.'
-      alert(errorMessage)
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
-  }, [resetEmail])
+  }, [useBirthMethod, resetEmail, resetBirthDate, resetNewPassword, resetConfirmPassword])
 
   const handleAuth = useCallback(async () => {
     setIsLoading(true)
     try {
       if (isSignUp) {
         // 회원가입 검증
-        if (!email || !password || !name) {
+        if (!email || !password || !name || !birthDate) {
           setError('모든 필수 항목을 입력해주세요.')
+          return
+        }
+
+        // 생년월일 유효성 검사
+        const today = new Date()
+        const birth = new Date(birthDate)
+        if (birth >= today) {
+          setError('유효한 생년월일을 입력해주세요.')
           return
         }
 
@@ -100,7 +142,7 @@ function LoginContent() {
           }
         }
 
-        await signUp(email, password, name, username || undefined, 'email')
+        await signUp(email, password, name, username || undefined, 'email', birthDate)
         alert('회원가입이 완료되었습니다! 로그인해보세요.')
         setIsSignUp(false)
         
@@ -109,6 +151,7 @@ function LoginContent() {
         setPassword('')
         setName('')
         setUsername('')
+        setBirthDate('')
         setLoginId('')
         setError('')
         setUsernameError('')
@@ -132,7 +175,7 @@ function LoginContent() {
     } finally {
       setIsLoading(false)
     }
-  }, [isSignUp, email, password, name, username, loginId, router, searchParams])
+  }, [isSignUp, email, password, name, username, birthDate, loginId, router, searchParams])
 
   // 모드 전환 함수 메모이제이션
   const toggleMode = useCallback(() => {
@@ -155,11 +198,13 @@ function LoginContent() {
   const modeContent = useMemo(() => ({
     title: isForgotPassword ? '비밀번호 찾기' : isSignUp ? '회원가입' : '로그인',
     description: isForgotPassword 
-      ? '가입 시 사용한 이메일을 입력하세요' 
+      ? useBirthMethod 
+        ? '이메일과 생년월일로 본인을 확인하고 비밀번호를 재설정하세요'
+        : '가입 시 사용한 이메일을 입력하세요'
       : isSignUp 
       ? '새 계정을 만드세요' 
       : '이메일 또는 닉네임으로 로그인하세요'
-  }), [isSignUp, isForgotPassword])
+  }), [isSignUp, isForgotPassword, useBirthMethod])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -192,19 +237,67 @@ function LoginContent() {
               </div>
 
               {isForgotPassword ? (
-                <ForgotPasswordForm
-                  resetEmail={resetEmail}
-                  isLoading={isLoading}
-                  onEmailChange={setResetEmail}
-                  onSubmit={handleForgotPassword}
-                  onBack={() => setIsForgotPassword(false)}
-                />
+                useBirthMethod ? (
+                  <>
+                    <div className="flex justify-between items-center mb-4">
+                      <button
+                        onClick={() => setUseBirthMethod(false)}
+                        className="text-sm text-blue-600 hover:text-blue-700"
+                      >
+                        이메일 방식으로 변경
+                      </button>
+                    </div>
+                    <ForgotPasswordWithBirthForm
+                      email={resetEmail}
+                      birthDate={resetBirthDate}
+                      newPassword={resetNewPassword}
+                      confirmPassword={resetConfirmPassword}
+                      error={error}
+                      isLoading={isLoading}
+                      onEmailChange={setResetEmail}
+                      onBirthDateChange={setResetBirthDate}
+                      onNewPasswordChange={setResetNewPassword}
+                      onConfirmPasswordChange={setResetConfirmPassword}
+                      onSubmit={handleForgotPassword}
+                      onBack={() => {
+                        setIsForgotPassword(false)
+                        setError('')
+                        setResetEmail('')
+                        setResetBirthDate('')
+                        setResetNewPassword('')
+                        setResetConfirmPassword('')
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-center mb-4">
+                      <button
+                        onClick={() => setUseBirthMethod(true)}
+                        className="text-sm text-blue-600 hover:text-blue-700"
+                      >
+                        생년월일 방식으로 변경
+                      </button>
+                    </div>
+                    <ForgotPasswordForm
+                      resetEmail={resetEmail}
+                      isLoading={isLoading}
+                      onEmailChange={setResetEmail}
+                      onSubmit={handleForgotPassword}
+                      onBack={() => {
+                        setIsForgotPassword(false)
+                        setError('')
+                      }}
+                    />
+                  </>
+                )
               ) : isSignUp ? (
                 <SignUpForm
                   name={name}
                   email={email}
                   password={password}
                   username={username}
+                  birthDate={birthDate}
                   usernameError={usernameError}
                   usernameSuggestions={usernameSuggestions}
                   error={error}
@@ -213,6 +306,7 @@ function LoginContent() {
                   onEmailChange={setEmail}
                   onPasswordChange={setPassword}
                   onUsernameChange={handleUsernameChange}
+                  onBirthDateChange={setBirthDate}
                   onSubmit={handleAuth}
                   onToggleMode={toggleMode}
                   onSelectSuggestion={selectSuggestion}
@@ -226,7 +320,11 @@ function LoginContent() {
                   onPasswordChange={setPassword}
                   onSubmit={handleAuth}
                   onToggleMode={toggleMode}
-                  onForgotPassword={() => setIsForgotPassword(true)}
+                  onForgotPassword={() => {
+                        setIsForgotPassword(true)
+                        setUseBirthMethod(true) // 기본값으로 생년월일 방식 설정
+                        setError('')
+                      }}
                 />
               )}
 

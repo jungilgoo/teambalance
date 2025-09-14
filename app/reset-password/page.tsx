@@ -20,8 +20,42 @@ function ResetPasswordContent() {
   const supabase = createSupabaseBrowser()
 
   useEffect(() => {
-    // URL에서 토큰 확인
+    // URL에서 토큰 확인 및 처리
     const handleAuthCallback = async () => {
+      // URL에서 해시 프래그먼트 처리 (Supabase Auth callback)
+      if (typeof window !== 'undefined' && window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1))
+        const accessToken = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
+        const type = hashParams.get('type')
+        
+        console.log('🔍 URL 해시 파라미터:', { type, hasAccessToken: !!accessToken })
+        
+        if (type === 'recovery' && accessToken) {
+          try {
+            // 토큰으로 세션 설정
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || ''
+            })
+            
+            if (error) {
+              console.error('세션 설정 오류:', error)
+              setError('유효하지 않은 재설정 링크입니다.')
+              return
+            }
+            
+            console.log('✅ 세션 설정 완료')
+            return
+          } catch (err) {
+            console.error('토큰 처리 오류:', err)
+            setError('토큰 처리에 실패했습니다.')
+            return
+          }
+        }
+      }
+      
+      // 기존 세션 확인
       const { data, error } = await supabase.auth.getSession()
       
       if (error) {
@@ -31,9 +65,11 @@ function ResetPasswordContent() {
       }
       
       if (!data.session) {
-        setError('재설정 링크가 만료되었거나 유효하지 않습니다.')
+        setError('재설정 링크가 만료되었거나 유효하지 않습니다. 다시 비밀번호 재설정을 요청해주세요.')
         return
       }
+      
+      console.log('✅ 유효한 세션 확인됨')
     }
 
     handleAuthCallback()

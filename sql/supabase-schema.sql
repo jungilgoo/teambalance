@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     email TEXT NOT NULL,
     name TEXT NOT NULL,
     username TEXT UNIQUE,
+    birth_date DATE, -- 비밀번호 찾기용 생년월일 (신규 가입자는 필수, 기존 사용자는 선택)
     avatar_url TEXT,
     provider TEXT CHECK (provider IN ('email')) NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
