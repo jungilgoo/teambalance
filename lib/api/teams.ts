@@ -195,7 +195,7 @@ export const createTeamInvite = async (
         invite_code: inviteCode,
         created_by: createdById,
         expires_at: expiresAt.toISOString(),
-        uses_count: 0,
+        current_uses: 0,
         max_uses: null,
         is_active: true,
         created_at: new Date().toISOString()
@@ -214,7 +214,7 @@ export const createTeamInvite = async (
       inviteCode: invite.invite_code,
       createdBy: invite.created_by,
       expiresAt: new Date(invite.expires_at),
-      currentUses: invite.uses_count,
+      currentUses: invite.current_uses,
       maxUses: invite.max_uses,
       isActive: invite.is_active,
       createdAt: new Date(invite.created_at)
@@ -260,7 +260,7 @@ export const getTeamByInviteCode = async (inviteCode: string): Promise<any | nul
         isPublic: invite.teams.is_public
       },
       expiresAt: new Date(invite.expires_at),
-      currentUses: invite.uses_count,
+      currentUses: invite.current_uses,
       maxUses: invite.max_uses
     }
   } catch (error) {
@@ -288,7 +288,7 @@ export const getTeamInvites = async (teamId: string): Promise<TeamInvite[]> => {
       inviteCode: invite.invite_code,
       createdBy: invite.created_by,
       expiresAt: new Date(invite.expires_at),
-      currentUses: invite.uses_count,
+      currentUses: invite.current_uses,
       maxUses: invite.max_uses,
       isActive: invite.is_active,
       createdAt: new Date(invite.created_at)

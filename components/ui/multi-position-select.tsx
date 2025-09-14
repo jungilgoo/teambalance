@@ -26,6 +26,19 @@ export function MultiPositionSelect({
   // 주포지션을 제외한 선택 가능한 포지션들
   const availablePositions = allPositions.filter(pos => pos !== mainPosition)
   
+  // 주포지션 변경 시 선택된 부포지션에서 주포지션과 겹치는 것이 있으면 자동 제거
+  useEffect(() => {
+    const validSelections = selectedPositions.filter(pos => pos !== mainPosition)
+    if (validSelections.length !== selectedPositions.length) {
+      // 겹치는 포지션이 있어서 제거되었을 때, 최소 1개는 유지
+      if (validSelections.length === 0) {
+        onPositionsChange([availablePositions[0]])
+      } else {
+        onPositionsChange(validSelections)
+      }
+    }
+  }, [mainPosition, selectedPositions, onPositionsChange, availablePositions])
+  
   const handlePositionToggle = (position: Position, checked: boolean) => {
     let newSelections: Position[]
     

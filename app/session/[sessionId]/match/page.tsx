@@ -40,13 +40,19 @@ const positionOrder: Position[] = ['top', 'jungle', 'mid', 'adc', 'support']
 function PositionColumn({ members }: { members: TeamMember[] }) {
   return (
     <div className="w-20 space-y-3">
-      {members.map((member, index) => (
-        <div key={`position-${member.id || index}`} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm h-[84px] flex items-center">
-          <div className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-md text-xs font-medium whitespace-nowrap">
-            {positionNames[member.mainPosition]}
+      {members.map((member, index) => {
+        // 경기 중 실제 플레이 포지션 우선 사용, 없으면 주포지션 사용
+        const displayPosition = (member as any).position || member.mainPosition
+        // 안전하게 Position 타입으로 캐스팅
+        const safePosition = displayPosition as Position
+        return (
+          <div key={`position-${member.id || index}`} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm h-[84px] flex items-center">
+            <div className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-md text-xs font-medium whitespace-nowrap">
+              {positionNames[safePosition] || positionNames[member.mainPosition]}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -426,22 +432,24 @@ export default function MatchResultPage() {
             const gameData = {
               team1: {
             color: 'blue' as const,
-            members: (retrySessionData.team1Members || []).map((member: any) => ({
+            members: (retrySessionData.team1Members || []).map((member: any, index: number) => ({
               ...member,
               memberId: member.id || member.id, // id를 memberId로 매핑
               kills: member.kills ?? 0, // 기본값 0 설정
               deaths: member.deaths ?? 0, // 기본값 0 설정
               assists: member.assists ?? 0, // 기본값 0 설정
+              position: member.position || positionOrder[index] || member.mainPosition, // 실제 플레이 포지션 설정
             }))
           },
           team2: {
             color: 'red' as const,
-            members: (retrySessionData.team2Members || []).map((member: any) => ({
+            members: (retrySessionData.team2Members || []).map((member: any, index: number) => ({
               ...member,
               memberId: member.id || member.id, // id를 memberId로 매핑
               kills: member.kills ?? 0, // 기본값 0 설정
               deaths: member.deaths ?? 0, // 기본값 0 설정
               assists: member.assists ?? 0, // 기본값 0 설정
+              position: member.position || positionOrder[index] || member.mainPosition, // 실제 플레이 포지션 설정
             }))
           }
             }
@@ -496,22 +504,24 @@ export default function MatchResultPage() {
         const gameData = {
           team1: {
             color: 'blue' as const,
-            members: (rawSession.team1Members || []).map((member: any) => ({
+            members: (rawSession.team1Members || []).map((member: any, index: number) => ({
               ...member,
               memberId: member.id || member.id, // id를 memberId로 매핑
               kills: member.kills ?? 0, // 기본값 0 설정
               deaths: member.deaths ?? 0, // 기본값 0 설정
               assists: member.assists ?? 0, // 기본값 0 설정
+              position: member.position || positionOrder[index] || member.mainPosition, // 실제 플레이 포지션 설정
             }))
           },
           team2: {
             color: 'red' as const,
-            members: (rawSession.team2Members || []).map((member: any) => ({
+            members: (rawSession.team2Members || []).map((member: any, index: number) => ({
               ...member,
               memberId: member.id || member.id, // id를 memberId로 매핑
               kills: member.kills ?? 0, // 기본값 0 설정
               deaths: member.deaths ?? 0, // 기본값 0 설정
               assists: member.assists ?? 0, // 기본값 0 설정
+              position: member.position || positionOrder[index] || member.mainPosition, // 실제 플레이 포지션 설정
             }))
           }
         }

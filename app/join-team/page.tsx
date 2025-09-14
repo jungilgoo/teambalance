@@ -24,7 +24,7 @@ function JoinTeamContent() {
   const [nickname, setNickname] = useState('')
   const [tier, setTier] = useState<TierType>('silver_iv')
   const [mainPosition, setMainPosition] = useState<Position>('mid')
-  const [subPositions, setSubPositions] = useState<Position[]>(['adc'])
+  const [subPositions, setSubPositions] = useState<Position[]>(['support'])
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   
@@ -472,7 +472,12 @@ function JoinTeamContent() {
                           setMainPosition(newMain)
                           setSubPositions(prev => {
                             const filtered = prev.filter(pos => pos !== newMain)
-                            return filtered.length > 0 ? filtered : ['adc']
+                            if (filtered.length > 0) return filtered
+                            
+                            // 주포지션을 제외한 다른 포지션 중 하나를 기본값으로 설정
+                            const allPositions: Position[] = ['top', 'jungle', 'mid', 'adc', 'support']
+                            const availablePositions = allPositions.filter(pos => pos !== newMain)
+                            return [availablePositions[0]]
                           })
                         }}
                         placeholder="주 포지션"
@@ -617,8 +622,12 @@ function JoinTeamContent() {
                       // 새로운 주포지션이 기존 부포지션에 포함되어 있으면 제거
                       setSubPositions(prev => {
                         const filtered = prev.filter(pos => pos !== newMain)
-                        // 필터링 후 빈 배열이면 기본값 추가
-                        return filtered.length > 0 ? filtered : ['adc']
+                        if (filtered.length > 0) return filtered
+                        
+                        // 주포지션을 제외한 다른 포지션 중 하나를 기본값으로 설정
+                        const allPositions: Position[] = ['top', 'jungle', 'mid', 'adc', 'support']
+                        const availablePositions = allPositions.filter(pos => pos !== newMain)
+                        return [availablePositions[0]]
                       })
                     }}
                     placeholder="주 포지션"

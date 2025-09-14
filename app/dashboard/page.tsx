@@ -48,9 +48,16 @@ export default function DashboardPage() {
     }
   }, [authState, authLoading, router, userTeams.length]) // isLoading 제거
 
-  const handleLogout = () => {
-    logout()
-    router.push('/login')
+  const handleLogout = async () => {
+    try {
+      await logout()
+      // 완전한 페이지 새로고침으로 리다이렉트
+      window.location.href = '/login'
+    } catch (error) {
+      console.error('로그아웃 오류:', error)
+      // 오류가 발생해도 로그인 페이지로 리다이렉트
+      window.location.href = '/login'
+    }
   }
 
   const handleCreateTeam = () => {
