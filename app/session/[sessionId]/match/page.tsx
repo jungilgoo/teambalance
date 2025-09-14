@@ -692,9 +692,10 @@ export default function MatchResultPage() {
       const fromData = fromTeam === 'team1' ? team1Data : team2Data
       const toData = targetTeam === 'team1' ? team1Data : team2Data
       
-      // 5vs5 구성 확인
-      if (toData.length >= 5) {
-        alert('각 팀은 최대 5명까지만 배정할 수 있습니다.')
+      // 5vs5 구성 확인 - 한 명을 다른 팀으로 이동시키는 것이므로 대상 팀이 5명이어도 가능
+      // 단, 원본 팀에서 한 명이 빠진 후 4명 이하가 되어야 함
+      if (fromData.length <= 1) {
+        alert('각 팀은 최소 1명은 있어야 합니다.')
         return
       }
       
