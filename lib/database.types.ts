@@ -115,7 +115,7 @@ export type Database = {
           nickname?: string
           tier?: string
           main_position?: 'top' | 'jungle' | 'mid' | 'adc' | 'support'
-          sub_position?: 'top' | 'jungle' | 'mid' | 'adc' | 'support'
+          sub_positions?: ('top' | 'jungle' | 'mid' | 'adc' | 'support')[]
           total_wins?: number
           total_losses?: number
           main_position_games?: number
