@@ -259,6 +259,7 @@ export const signUp = async (
       options: {
         data: {
           name,
+          birth_date: birthDate || null,  // 생년월일 추가
           provider,  // 메타데이터에 provider 포함
           full_name: name,  // Supabase 표준 필드 추가
           signup_provider: provider  // 백업 필드
