@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChampionSelect } from '@/components/ui/champion-select'
 import { NumberWheel } from '@/components/ui/number-wheel'
 import { getAuthState } from '@/lib/auth'
@@ -12,39 +12,18 @@ import { getSession, updateSessionResult, saveMatchResult, updateMatchResult, ge
 import { useSessionRealtime } from '@/lib/hooks/useSessionRealtime'
 import { useMatchRealtime } from '@/lib/hooks/useMatchRealtime'
 import { positionNames } from '@/lib/utils'
-import { Trophy, Users, ArrowLeft, Save, GripVertical } from 'lucide-react'
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  DragStartEvent,
-} from '@dnd-kit/core'
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import {
-  useSortable,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { Trophy, Users, ArrowLeft, Save } from 'lucide-react'
 
 const positionOrder: Position[] = ['top', 'jungle', 'mid', 'adc', 'support']
 
-// 포지션 컬럼 컴포넌트
+// 간소화된 포지션 컬럼 컴포넌트
 function PositionColumn({ members }: { members: TeamMember[] }) {
   return (
     <div className="w-20 space-y-3">
       {members.map((member, index) => {
-        // 경기 중 실제 플레이 포지션 우선 사용, 없으면 주포지션 사용
-        const displayPosition = (member as any).position || member.mainPosition
-        // 안전하게 Position 타입으로 캐스팅
-        const safePosition = displayPosition as Position
+        const actualPosition = (member as any).position || member.mainPosition
+        const safePosition = actualPosition as Position
+
         return (
           <div key={`position-${member.id || index}`} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm h-[84px] flex items-center">
             <div className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-md text-xs font-medium whitespace-nowrap">
@@ -57,247 +36,29 @@ function PositionColumn({ members }: { members: TeamMember[] }) {
   )
 }
 
-// HTML5 네이티브 드래그 앤 드롭을 사용하는 선수 이름 컬럼 컴포넌트
-function PlayerNameColumn({ 
-  members, 
-  team,
-  onDragEnd,
-  onReorder
-}: { 
-  members: TeamMember[]
-  team: 'team1' | 'team2'
-  onDragEnd: (event: DragEndEvent, team: 'team1' | 'team2') => void
-  onReorder: (newMembers: TeamMember[]) => void
-}) {
-  const [draggedItem, setDraggedItem] = useState<TeamMember | null>(null)
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
-  const [draggedFromIndex, setDraggedFromIndex] = useState<number | null>(null)
-
-  const handleNativeDragStart = (e: React.DragEvent, member: TeamMember, index: number) => {
-    // 즉시 상태 업데이트
-    setDraggedItem(member)
-    setDragOverIndex(null)
-    setDraggedFromIndex(index) // 원본 인덱스 저장
-    
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', member.id)
-    e.dataTransfer.setData('application/json', JSON.stringify({
-      member,
-      fromTeam: team,
-      index
-    }))
-    
-    // 드래그 이미지 커스터마이징
-    const dragImage = e.currentTarget.cloneNode(true) as HTMLElement
-    dragImage.style.opacity = '0.8'
-    e.dataTransfer.setDragImage(dragImage, 0, 0)
-  }
-
-  const handleNativeDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    
-    // 교체할 타겟 인덱스 설정
-    if (dragOverIndex !== index) {
-      setDragOverIndex(index)
-    }
-  }
-
-  const handleNativeDragLeave = (e: React.DragEvent) => {
-    // 컨테이너를 완전히 벗어날 때만 dragOverIndex를 리셋
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX
-    const y = e.clientY
-    
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setDragOverIndex(null)
-    }
-  }
-
-  const handleNativeDrop = (e: React.DragEvent, targetIndex: number) => {
-    e.preventDefault()
-    
-    if (!draggedItem || dragOverIndex === null || draggedFromIndex === null) {
-      return
-    }
-    
-    const sourceIndex = draggedFromIndex // 저장된 원본 인덱스 사용
-    const finalTargetIndex = dragOverIndex
-    
-    if (sourceIndex !== finalTargetIndex) {
-      // 즉시 교체 실행 (지연 없음)
-      const newMembers = [...members]
-      
-      // 안전한 교체: 인덱스 범위 확인
-      if (sourceIndex >= 0 && sourceIndex < newMembers.length && 
-          finalTargetIndex >= 0 && finalTargetIndex < newMembers.length) {
-        
-        // 두 요소의 위치를 교체
-        const temp = newMembers[sourceIndex]
-        newMembers[sourceIndex] = newMembers[finalTargetIndex]
-        newMembers[finalTargetIndex] = temp
-        
-        // 포지션 업데이트
-        const updatedMembers = newMembers.map((member, index) => ({
-          ...member,
-          position: positionOrder[index]
-        }))
-        
-        
-        // 부모 컴포넌트에 새로운 순서 전달
-        onReorder(updatedMembers)
-      } else {
-        console.error('잘못된 인덱스:', { sourceIndex, finalTargetIndex, membersLength: members.length })
-      }
-    }
-    
-    // 상태 리셋 (약간의 지연으로 애니메이션 완료 대기)
-    setTimeout(() => {
-      setDraggedItem(null)
-      setDragOverIndex(null)
-      setDraggedFromIndex(null)
-    }, 300)
-  }
-
-  const handleNativeDragEnd = () => {
-    // 드롭이 처리되지 않은 경우에만 상태 리셋
-    setTimeout(() => {
-      setDraggedItem(null)
-      setDragOverIndex(null)
-      setDraggedFromIndex(null)
-    }, 100)
-  }
-
+// 간소화된 선수 이름 컬럼 컴포넌트 (드래그 기능 제거)
+function PlayerNameColumn({ members }: { members: TeamMember[] }) {
   return (
     <div className="w-36 space-y-3">
-      {members.map((member, index) => {
-        // 더 안전한 ID 비교: memberId가 없으면 nickname으로 대체
-        const draggedId = draggedItem?.id || draggedItem?.nickname
-        const currentId = member.id || member.nickname
-        const isDragging = draggedId === currentId
-        const isSwapTarget = dragOverIndex === index && draggedItem && !isDragging
-        
-        
-        return (
-          <div 
-            key={`native-wrapper-${member.id || index}`} 
-            className={`
-              relative will-change-transform
-              ${isSwapTarget ? 'z-10' : ''}
-              ${isDragging ? 'z-50' : 'z-0'}
-            `}
-            style={{
-              transform: isSwapTarget ? 'translateY(20px) scale(1.05)' : 
-                        isDragging ? 'translateY(-20px) scale(0.95)' : 
-                        'translateY(0px) scale(1)',
-              transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              filter: isSwapTarget ? 'drop-shadow(0 15px 25px rgba(34, 197, 94, 0.4))' :
-                     isDragging ? 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.4))' :
-                     'none',
-              zIndex: isDragging ? 1000 : isSwapTarget ? 100 : 1
-            }}
-          >
-            {/* 교체 대상 표시 오버레이 */}
-            {isSwapTarget && (
-              <div className="absolute inset-0 rounded-lg bg-green-200/30 animate-ping pointer-events-none" />
-            )}
-            
-            {/* 드래그 중 표시 오버레이 */}
-            {isDragging && (
-              <div className="absolute inset-0 rounded-lg bg-blue-200/20 animate-pulse pointer-events-none" />
-            )}
-            <NativeDraggablePlayerName 
-              member={member}
-              index={index}
-              isDragging={isDragging}
-              isDragOver={!!isSwapTarget}
-              onDragStart={(e) => handleNativeDragStart(e, member, index)}
-              onDragOver={(e) => handleNativeDragOver(e, index)}
-              onDragLeave={handleNativeDragLeave}
-              onDrop={(e) => handleNativeDrop(e, index)}
-              onDragEnd={handleNativeDragEnd}
-            />
+      {members.map((member, index) => (
+        <div
+          key={`player-${member.id || index}`}
+          className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm h-[84px] flex items-center"
+        >
+          <div className="font-semibold text-blue-900 dark:text-blue-100 text-sm break-all">
+            {member.nickname}
           </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// HTML5 네이티브 드래그 앤 드롭을 사용하는 선수 이름 카드
-function NativeDraggablePlayerName({ 
-  member, 
-  index,
-  isDragging,
-  isDragOver,
-  onDragStart,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  onDragEnd
-}: { 
-  member: TeamMember
-  index: number
-  isDragging: boolean
-  isDragOver: boolean
-  onDragStart: (e: React.DragEvent) => void
-  onDragOver: (e: React.DragEvent) => void
-  onDragLeave: (e: React.DragEvent) => void
-  onDrop: (e: React.DragEvent) => void
-  onDragEnd: () => void
-}) {
-  return (
-    <div
-      draggable={true}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
-      className={`
-        cursor-grab active:cursor-grabbing
-        rounded-lg shadow-sm hover:shadow-md 
-        px-3 py-4 h-[84px] flex items-center
-        group select-none will-change-transform
-        ${isDragging ? 
-          'opacity-60 shadow-2xl z-[9999] rotate-3' : 
-          'z-0 hover:scale-[1.02] hover:-translate-y-0.5'
-        }
-      `}
-      style={{
-        background: isDragOver ? 
-          'linear-gradient(to right, rgb(34 197 94 / 0.1), rgb(16 185 129 / 0.1))' :
-          'linear-gradient(to right, rgb(59 130 246 / 0.1), rgb(99 102 241 / 0.1))',
-        borderWidth: '2px',
-        borderStyle: 'solid',
-        borderColor: isDragOver ? '#22c55e' : '#3b82f6',
-        boxShadow: isDragOver ? 
-          '0 10px 25px -3px rgba(34, 197, 94, 0.3), 0 4px 6px -2px rgba(34, 197, 94, 0.2)' :
-          isDragging ? 
-          '0 25px 50px -12px rgba(0, 0, 0, 0.25)' :
-          '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        transform: isDragging ? 'rotate(3deg) scale(1.05)' : 'rotate(0deg) scale(1)',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-      }}
-      title={`${member.nickname} - 드래그하여 순서 변경`}
-    >
-      <div className="flex items-center justify-between w-full">
-        <div className="font-semibold text-blue-900 dark:text-blue-100 text-sm break-all pr-2 flex-1 pointer-events-none">
-          {member.nickname}
         </div>
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1">
-          <GripVertical className="w-4 h-4 text-blue-500 dark:text-blue-400 pointer-events-none" />
-        </div>
-      </div>
+      ))}
     </div>
   )
 }
 
 // 챔피언 및 KDA 컬럼 컴포넌트
-function ChampionKdaColumn({ 
-  members, 
-  onUpdate 
-}: { 
+function ChampionKdaColumn({
+  members,
+  onUpdate
+}: {
   members: TeamMember[]
   onUpdate: (memberId: string, field: keyof TeamMember, value: string | number) => void
 }) {
@@ -313,7 +74,7 @@ function ChampionKdaColumn({
               placeholder="챔피언"
               className="h-9"
             />
-            
+
             {/* KDA 입력 */}
             <NumberWheel
               value={(member as any).kills || 0}
@@ -349,7 +110,7 @@ export default function MatchResultPage() {
   const searchParams = useSearchParams()
   const sessionId = params.sessionId as string
   const isEditMode = searchParams.get('edit') === 'true'
-  
+
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSecondaryLoading, setIsSecondaryLoading] = useState(true)
@@ -360,12 +121,8 @@ export default function MatchResultPage() {
   const [team2Data, setTeam2Data] = useState<TeamMember[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [savingProgress, setSavingProgress] = useState('')
-  
-  // 팀 간 드래그 상태 관리
-  const [draggedPlayer, setDraggedPlayer] = useState<{member: TeamMember, fromTeam: 'team1' | 'team2'} | null>(null)
-  const [teamDropTarget, setTeamDropTarget] = useState<'team1' | 'team2' | null>(null)
 
-  // 실시간 세션 관리 (Progressive Loading - 2단계에서 활성화)
+  // 실시간 세션 관리
   const {
     session: realtimeSession,
     sessionStatus,
@@ -374,7 +131,7 @@ export default function MatchResultPage() {
     completeSession
   } = useSessionRealtime(sessionId, !isSecondaryLoading)
 
-  // 실시간 매치 결과 관리 (Progressive Loading - 2단계에서 활성화)
+  // 실시간 매치 결과 관리
   const {
     saveNewMatchResult
   } = useMatchRealtime(realtimeSession?.teamId || '', !!realtimeSession && !isSecondaryLoading)
@@ -404,12 +161,12 @@ export default function MatchResultPage() {
         // 세션 데이터 확인 - 재시도 로직 포함
         if (sessionData.status === 'rejected' || !sessionData.value) {
           console.log('세션 데이터 로드 실패, 재시도 중...')
-          
+
           if (isMounted) {
             setIsRetrying(true)
           }
-          
-          // 최대 3번까지 재시도 (세션 생성이 완료되지 않았을 가능성)
+
+          // 최대 3번까지 재시도
           let retrySessionData = null
           for (let i = 0; i < 3; i++) {
             await new Promise(resolve => setTimeout(resolve, 1000))
@@ -423,68 +180,76 @@ export default function MatchResultPage() {
               console.log(`재시도 ${i + 1}번째 실패:`, retryError)
             }
           }
-          
+
           if (retrySessionData && isMounted) {
             // 재시도 성공 시 계속 진행
             const session: Session = {
               id: retrySessionData.id,
               teamId: retrySessionData.teamId,
               createdBy: 'unknown',
-              status: retrySessionData.status === 'in_progress' ? 'in_progress' : 
+              status: retrySessionData.status === 'in_progress' ? 'in_progress' :
                       retrySessionData.status === 'completed' ? 'completed' : 'preparing',
               selectedMembers: retrySessionData.selectedMembers || [],
               team1Members: retrySessionData.team1Members || [],
               team2Members: retrySessionData.team2Members || [],
               createdAt: new Date(retrySessionData.createdAt)
             }
-            
+
             const gameData = {
               team1: {
-            color: 'blue' as const,
-            members: (retrySessionData.team1Members || []).map((member: any, index: number) => ({
-              ...member,
-              memberId: member.id || member.id, // id를 memberId로 매핑
-              kills: member.kills ?? 0, // 기본값 0 설정
-              deaths: member.deaths ?? 0, // 기본값 0 설정
-              assists: member.assists ?? 0, // 기본값 0 설정
-              position: member.position || positionOrder[index] || member.mainPosition, // 실제 플레이 포지션 설정
-            }))
-          },
-          team2: {
-            color: 'red' as const,
-            members: (retrySessionData.team2Members || []).map((member: any, index: number) => ({
-              ...member,
-              memberId: member.id || member.id, // id를 memberId로 매핑
-              kills: member.kills ?? 0, // 기본값 0 설정
-              deaths: member.deaths ?? 0, // 기본값 0 설정
-              assists: member.assists ?? 0, // 기본값 0 설정
-              position: member.position || positionOrder[index] || member.mainPosition, // 실제 플레이 포지션 설정
-            }))
-          }
+                color: 'blue' as const,
+                members: (retrySessionData.team1Members || []).map((member: any, index: number) => {
+                  const assignedPosition = member.position
+                  const fallbackPosition = positionOrder[index]
+                  const finalPosition = assignedPosition || fallbackPosition || member.mainPosition
+
+                  return {
+                    ...member,
+                    memberId: member.id || member.id,
+                    kills: member.kills ?? 0,
+                    deaths: member.deaths ?? 0,
+                    assists: member.assists ?? 0,
+                    position: finalPosition,
+                  }
+                })
+              },
+              team2: {
+                color: 'red' as const,
+                members: (retrySessionData.team2Members || []).map((member: any, index: number) => {
+                  const assignedPosition = member.position
+                  const fallbackPosition = positionOrder[index]
+                  const finalPosition = assignedPosition || fallbackPosition || member.mainPosition
+
+                  return {
+                    ...member,
+                    memberId: member.id || member.id,
+                    kills: member.kills ?? 0,
+                    deaths: member.deaths ?? 0,
+                    assists: member.assists ?? 0,
+                    position: finalPosition,
+                  }
+                })
+              }
             }
 
             setTeam1Data(gameData.team1.members)
             setTeam2Data(gameData.team2.members)
             setIsLoading(false)
-            
-            // 실시간 기능은 나중에 활성화
+
             setTimeout(() => {
               if (isMounted) {
                 setIsSecondaryLoading(false)
               }
             }, 500)
-            
-            console.log('재시도 성공 - 세션 초기화 완료')
+
             return
           }
-          
-          // 재시도도 실패한 경우 - 에러 상태 표시 후 대시보드로 이동
+
+          // 재시도도 실패한 경우
           if (isMounted) {
-            console.log('세션 데이터를 찾을 수 없어 대시보드로 이동합니다.')
             setSessionNotFound(true)
             setIsLoading(false)
-            
-            // 3초 후 자동으로 대시보드로 이동
+
             setTimeout(() => {
               if (isMounted) {
                 router.push('/dashboard')
@@ -496,42 +261,54 @@ export default function MatchResultPage() {
 
         const rawSession = sessionData.value
         console.log('경기 페이지: 세션 데이터 로드 완료:', rawSession)
-        
-        // 데이터 변환 최적화 - 필요한 필드만 변환
+
+        // 데이터 변환
         const session: Session = {
           id: rawSession.id,
           teamId: rawSession.teamId,
           createdBy: 'unknown',
-          status: rawSession.status === 'in_progress' ? 'in_progress' : 
+          status: rawSession.status === 'in_progress' ? 'in_progress' :
                   rawSession.status === 'completed' ? 'completed' : 'preparing',
           selectedMembers: rawSession.selectedMembers || [],
           team1Members: rawSession.team1Members || [],
           team2Members: rawSession.team2Members || [],
           createdAt: new Date(rawSession.createdAt)
         }
-        
+
         const gameData = {
           team1: {
             color: 'blue' as const,
-            members: (rawSession.team1Members || []).map((member: any, index: number) => ({
-              ...member,
-              memberId: member.id || member.id, // id를 memberId로 매핑
-              kills: member.kills ?? 0, // 기본값 0 설정
-              deaths: member.deaths ?? 0, // 기본값 0 설정
-              assists: member.assists ?? 0, // 기본값 0 설정
-              position: member.position || positionOrder[index] || member.mainPosition, // 실제 플레이 포지션 설정
-            }))
+            members: (rawSession.team1Members || []).map((member: any, index: number) => {
+              const assignedPosition = member.position
+              const fallbackPosition = positionOrder[index]
+              const finalPosition = assignedPosition || fallbackPosition || member.mainPosition
+
+              return {
+                ...member,
+                memberId: member.id || member.id,
+                kills: member.kills ?? 0,
+                deaths: member.deaths ?? 0,
+                assists: member.assists ?? 0,
+                position: finalPosition,
+              }
+            })
           },
           team2: {
             color: 'red' as const,
-            members: (rawSession.team2Members || []).map((member: any, index: number) => ({
-              ...member,
-              memberId: member.id || member.id, // id를 memberId로 매핑
-              kills: member.kills ?? 0, // 기본값 0 설정
-              deaths: member.deaths ?? 0, // 기본값 0 설정
-              assists: member.assists ?? 0, // 기본값 0 설정
-              position: member.position || positionOrder[index] || member.mainPosition, // 실제 플레이 포지션 설정
-            }))
+            members: (rawSession.team2Members || []).map((member: any, index: number) => {
+              const assignedPosition = member.position
+              const fallbackPosition = positionOrder[index]
+              const finalPosition = assignedPosition || fallbackPosition || member.mainPosition
+
+              return {
+                ...member,
+                memberId: member.id || member.id,
+                kills: member.kills ?? 0,
+                deaths: member.deaths ?? 0,
+                assists: member.assists ?? 0,
+                position: finalPosition,
+              }
+            })
           }
         }
 
@@ -539,37 +316,15 @@ export default function MatchResultPage() {
         if (isMounted) {
           setTeam1Data(gameData.team1.members)
           setTeam2Data(gameData.team2.members)
-          setIsLoading(false) // 핵심 UI는 이미 렌더링 가능
+          setIsLoading(false)
         }
 
         // Edit 모드인 경우 기존 경기 결과 데이터 로드
         if (isEditMode && isMounted) {
           try {
-            console.log('📝 Edit 모드: 기존 경기 결과 로드 시작', { sessionId, isEditMode })
             const existingMatch = await getMatchBySessionId(sessionId)
-            
+
             if (existingMatch) {
-              console.log('✅ 기존 경기 결과 로드 완료:', {
-                matchId: existingMatch.id,
-                winner: existingMatch.winner,
-                team1Count: existingMatch.team1.members.length,
-                team2Count: existingMatch.team2.members.length,
-                team1Members: existingMatch.team1.members.map(m => ({ 
-                  id: m.memberId, 
-                  champion: m.champion,
-                  kills: m.kills,
-                  deaths: m.deaths,
-                  assists: m.assists
-                })),
-                team2Members: existingMatch.team2.members.map(m => ({ 
-                  id: m.memberId, 
-                  champion: m.champion,
-                  kills: m.kills,
-                  deaths: m.deaths,
-                  assists: m.assists
-                }))
-              })
-              
               // 기존 매치 데이터와 세션 데이터를 병합
               const mergeMatchDataWithSession = (sessionMembers: any[], matchMembers: any[]) => {
                 return sessionMembers.map(sessionMember => {
@@ -587,30 +342,22 @@ export default function MatchResultPage() {
 
               const mergedTeam1 = mergeMatchDataWithSession(gameData.team1.members, existingMatch.team1.members)
               const mergedTeam2 = mergeMatchDataWithSession(gameData.team2.members, existingMatch.team2.members)
-              
+
               setTeam1Data(mergedTeam1)
               setTeam2Data(mergedTeam2)
               setWinner(existingMatch.winner)
-              
-              console.log('🔄 Edit 모드: 기존 데이터 적용 완료', {
-                mergedTeam1Count: mergedTeam1.length,
-                mergedTeam2Count: mergedTeam2.length,
-                winner: existingMatch.winner
-              })
-            } else {
-              console.log('⚠️ Edit 모드: 기존 경기 결과를 찾을 수 없음', { sessionId })
             }
           } catch (error) {
-            console.error('❌ Edit 모드: 기존 경기 결과 로드 오류:', { sessionId, error })
+            console.error('Edit 모드: 기존 경기 결과 로드 오류:', error)
           }
         }
 
-        // Progressive Loading 2단계: 실시간 기능 등 부가 기능은 비동기로 로드
+        // Progressive Loading 2단계
         setTimeout(() => {
           if (isMounted) {
             setIsSecondaryLoading(false)
           }
-        }, 500) // 0.5초 후 부가 기능 활성화
+        }, 500)
       } catch (error) {
         console.error('세션 초기화 오류:', error)
         if (isMounted) {
@@ -633,98 +380,19 @@ export default function MatchResultPage() {
     field: keyof TeamMember,
     value: string | number
   ) => {
-    // memberId가 undefined이거나 빈 문자열인 경우 경고
     if (!memberId || memberId === 'undefined') {
       console.error('❌ memberId가 유효하지 않습니다:', memberId)
       return
     }
-    
+
     const setTeamData = team === 'team1' ? setTeam1Data : setTeam2Data
-    setTeamData(prev => 
-      prev.map(member => 
-        member.id === memberId 
+    setTeamData(prev =>
+      prev.map(member =>
+        member.id === memberId
           ? { ...member, [field]: value }
           : member
       )
     )
-  }
-
-  const handleDragEnd = (event: DragEndEvent, team: 'team1' | 'team2') => {
-    const { active, over } = event
-
-    if (!over || active.id === over.id) {
-      return
-    }
-
-    const setTeamData = team === 'team1' ? setTeam1Data : setTeam2Data
-
-    setTeamData((items) => {
-      const oldIndex = items.findIndex(item => item.id === active.id)
-      const newIndex = items.findIndex(item => item.id === over.id)
-
-      const reorderedItems = arrayMove(items, oldIndex, newIndex)
-      
-      // 포지션도 함께 업데이트
-      const updatedItems = reorderedItems.map((item, index) => ({
-        ...item,
-        position: positionOrder[index]
-      }))
-      
-      
-      return updatedItems
-    })
-  }
-
-  // 팀 간 이동 처리 함수
-  const handleCrossTeamDrop = (e: React.DragEvent, targetTeam: 'team1' | 'team2') => {
-    e.preventDefault()
-    
-    try {
-      const dragDataJson = e.dataTransfer.getData('application/json')
-      if (!dragDataJson) return
-      
-      const dragData = JSON.parse(dragDataJson)
-      const { member, fromTeam, index } = dragData
-      
-      // 같은 팀이면 팀 간 이동 처리하지 않음
-      if (fromTeam === targetTeam) return
-      
-      const fromData = fromTeam === 'team1' ? team1Data : team2Data
-      const toData = targetTeam === 'team1' ? team1Data : team2Data
-      
-      // 5vs5 구성 확인 - 한 명을 다른 팀으로 이동시키는 것이므로 대상 팀이 5명이어도 가능
-      // 단, 원본 팀에서 한 명이 빠진 후 4명 이하가 되어야 함
-      if (fromData.length <= 1) {
-        alert('각 팀은 최소 1명은 있어야 합니다.')
-        return
-      }
-      
-      // 원본 팀에서 제거
-      const updatedFromData = fromData.filter(m => m.id !== member.id)
-      
-      // 대상 팀에 추가 (포지션 자동 배정)
-      const updatedToData = [...toData, member].map((m, index) => ({
-        ...m,
-        position: positionOrder[index] || m.mainPosition
-      }))
-      
-      // 상태 업데이트
-      if (fromTeam === 'team1') {
-        setTeam1Data(updatedFromData.map((m, index) => ({ ...m, position: positionOrder[index] || m.mainPosition })))
-      } else {
-        setTeam2Data(updatedFromData.map((m, index) => ({ ...m, position: positionOrder[index] || m.mainPosition })))
-      }
-      
-      if (targetTeam === 'team1') {
-        setTeam1Data(updatedToData)
-      } else {
-        setTeam2Data(updatedToData)
-      }
-      
-      console.log(`${member.nickname}이(가) ${fromTeam}에서 ${targetTeam}으로 이동했습니다.`)
-    } catch (error) {
-      console.error('팀 간 이동 처리 오류:', error)
-    }
   }
 
   const handleSaveResults = async () => {
@@ -735,21 +403,13 @@ export default function MatchResultPage() {
 
     // 필수 필드 검증
     const allMembers = [...team1Data, ...team2Data]
-    console.log('검증 중인 멤버 데이터:', allMembers.map(member => ({
-      nickname: member.nickname,
-      champion: (member as any).champion,
-      kills: (member as any).kills,
-      deaths: (member as any).deaths,
-      assists: (member as any).assists
-    })))
-    
-    const missingData = allMembers.some(member => 
-      !(member as any).champion || 
-      (member as any).kills === null || 
-      (member as any).deaths === null || 
+    const missingData = allMembers.some(member =>
+      !(member as any).champion ||
+      (member as any).kills === null ||
+      (member as any).deaths === null ||
       (member as any).assists === null ||
-      (member as any).kills === undefined || 
-      (member as any).deaths === undefined || 
+      (member as any).kills === undefined ||
+      (member as any).deaths === undefined ||
       (member as any).assists === undefined
     )
 
@@ -760,23 +420,22 @@ export default function MatchResultPage() {
 
     setIsSaving(true)
     setSavingProgress('💾 경기 결과 준비 중...')
-    
+
     try {
       // 1. 세션 상태 업데이트
       setSavingProgress('🔄 세션 상태 업데이트 중...')
       const sessionSuccess = await updateSessionResult(sessionId, winner)
-      
+
       if (!sessionSuccess) {
         throw new Error('세션 상태 업데이트에 실패했습니다.')
       }
 
       // 2. 실제 경기 결과 저장 또는 업데이트
       let success = false
-      
+
       if (isEditMode) {
         // 수정 모드: 기존 매치 업데이트
         setSavingProgress('🔄 기존 경기 결과 업데이트 중...')
-        console.log('수정 모드: 기존 매치 업데이트')
         success = await updateMatchResult(sessionId, {
           winningTeam: winner,
           team1: team1Data.map(member => ({
@@ -796,14 +455,13 @@ export default function MatchResultPage() {
             assists: (member as any).assists || 0
           }))
         })
-        
+
         if (success) {
           setSavingProgress('📊 멤버 통계 업데이트 완료!')
         }
       } else {
         // 새로 생성 모드: 새로운 매치 생성
         setSavingProgress('🏆 새로운 경기 결과 저장 중...')
-        console.log('생성 모드: 새로운 매치 생성')
         const matchId = await saveMatchResult({
           sessionId,
           teamId: realtimeSession?.teamId || '',
@@ -826,23 +484,22 @@ export default function MatchResultPage() {
           }))
         })
         success = !!matchId
-        
+
         if (success) {
-          setSavingProgress('📊 멤버 통계 업데이트 완룼!')
+          setSavingProgress('📊 멤버 통계 업데이트 완료!')
         }
       }
 
       if (!success) {
         throw new Error(isEditMode ? '경기 결과 수정에 실패했습니다.' : '경기 결과 저장에 실패했습니다.')
       }
-      
+
       setSavingProgress('✅ 완료! 통계가 성공적으로 업데이트되었습니다.')
-      
-      // 짧은 지연 후 성공 메시지 표시
+
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      alert(isEditMode 
-        ? '✅ 경기 결과가 성공적으로 수정되었습니다!\n• 모든 멤버의 통계가 업데이트되었습니다\n• 승률과 티어 점수가 재계산되었습니다' 
+
+      alert(isEditMode
+        ? '✅ 경기 결과가 성공적으로 수정되었습니다!\n• 모든 멤버의 통계가 업데이트되었습니다\n• 승률과 티어 점수가 재계산되었습니다'
         : '✅ 경기 결과가 성공적으로 저장되었습니다!\n• 모든 멤버의 통계가 업데이트되었습니다\n• 승률과 티어 점수가 자동 계산되었습니다'
       )
       router.push(`/team/${realtimeSession?.teamId}`)
@@ -865,8 +522,8 @@ export default function MatchResultPage() {
             {isRetrying ? '세션 재연결 중...' : '경기 데이터 로딩 중...'}
           </div>
           <div className="text-sm text-muted-foreground mt-2">
-            {isRetrying 
-              ? '세션 생성이 완료되기까지 잠시 기다려주세요' 
+            {isRetrying
+              ? '세션 생성이 완료되기까지 잠시 기다려주세요'
               : '팀 구성과 선수 정보를 불러오고 있습니다'
             }
           </div>
@@ -875,9 +532,6 @@ export default function MatchResultPage() {
               💫 세션을 준비하는 중입니다
             </div>
           )}
-          <div className="mt-4 text-xs text-gray-500">
-            잠시만 기다려주세요...
-          </div>
         </div>
       </div>
     )
@@ -895,34 +549,23 @@ export default function MatchResultPage() {
             내전 세션이 생성 중이거나 일시적으로 접근할 수 없습니다.
             잠시 후 대시보드로 이동합니다.
           </div>
-          <div className="flex items-center justify-center space-x-2 text-blue-600">
-            <div className="animate-bounce">●</div>
-            <div className="animate-bounce" style={{ animationDelay: '0.1s' }}>●</div>
-            <div className="animate-bounce" style={{ animationDelay: '0.2s' }}>●</div>
-          </div>
-          <div className="mt-4">
-            <button 
-              onClick={() => router.push('/dashboard')}
-              className="text-blue-600 hover:text-blue-800 underline"
-            >
-              지금 대시보드로 이동하기
-            </button>
-          </div>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            지금 대시보드로 이동하기
+          </button>
         </div>
       </div>
     )
   }
 
-  // 세션 데이터가 아직 로드되지 않은 경우
   if (!team1Data.length && !team2Data.length && !isLoading && !sessionNotFound) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <div className="text-lg font-medium">세션을 불러오는 중...</div>
-          <div className="text-sm text-muted-foreground mt-2">
-            잠시만 기다려주세요
-          </div>
         </div>
       </div>
     )
@@ -935,8 +578,8 @@ export default function MatchResultPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={() => router.push(`/team/${realtimeSession?.teamId || 'unknown'}`)}
                 className="flex items-center gap-2"
               >
@@ -947,22 +590,15 @@ export default function MatchResultPage() {
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <Trophy className="w-6 h-6 text-yellow-500" />
                   {isEditMode ? '경기 결과 수정' : '경기 결과 입력'}
-                  {isSecondaryLoading && (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
-                  )}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  {isEditMode ? '경기 결과를 수정하고 저장하세요.' : '각 플레이어의 챔피언과 KDA를 입력하세요.'} 
-                  <span className="font-medium text-green-700 dark:text-green-400">선수를 다른 팀으로 드래그하여 팀 이동 가능합니다.</span>
-                  {isSecondaryLoading && (
-                    <span className="ml-2 text-blue-600">• 실시간 기능 로딩 중...</span>
-                  )}
+                  {isEditMode ? '경기 결과를 수정하고 저장하세요.' : '각 플레이어의 챔피언과 KDA를 입력하세요.'}
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2">
-              <Button 
+              <Button
                 onClick={handleSaveResults}
                 disabled={isSaving || !winner}
                 className="flex items-center gap-2"
@@ -986,7 +622,7 @@ export default function MatchResultPage() {
       {/* 메인 컨텐츠 */}
       <main className="container mx-auto px-4 py-8">
         <div className="space-y-6">
-          
+
           {/* 승리 팀 선택 */}
           <Card>
             <CardHeader>
@@ -1001,7 +637,7 @@ export default function MatchResultPage() {
                   variant={winner === 'team1' ? 'default' : 'outline'}
                   onClick={() => setWinner('team1')}
                   className="flex-1 h-12 text-lg"
-                  style={{ 
+                  style={{
                     backgroundColor: winner === 'team1' ? '#3b82f6' : undefined,
                     color: winner === 'team1' ? 'white' : undefined
                   }}
@@ -1012,7 +648,7 @@ export default function MatchResultPage() {
                   variant={winner === 'team2' ? 'default' : 'outline'}
                   onClick={() => setWinner('team2')}
                   className="flex-1 h-12 text-lg"
-                  style={{ 
+                  style={{
                     backgroundColor: winner === 'team2' ? '#ef4444' : undefined,
                     color: winner === 'team2' ? 'white' : undefined
                   }}
@@ -1025,57 +661,20 @@ export default function MatchResultPage() {
 
           {/* 팀별 경기 결과 입력 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
+
             {/* 블루팀 */}
-            <Card 
-              className={`border-blue-200 dark:border-blue-800 transition-all duration-300 ${
-                teamDropTarget === 'team1' ? 
-                'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-300 dark:border-green-600 shadow-lg scale-[1.02]' : 
-                ''
-              }`}
-              onDragOver={(e) => {
-                e.preventDefault()
-                setTeamDropTarget('team1')
-              }}
-              onDragLeave={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect()
-                const x = e.clientX
-                const y = e.clientY
-                if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-                  setTeamDropTarget(null)
-                }
-              }}
-              onDrop={(e) => {
-                handleCrossTeamDrop(e, 'team1')
-                setTeamDropTarget(null)
-              }}
-            >
+            <Card className="border-blue-200 dark:border-blue-800">
               <CardHeader className="bg-blue-50 dark:bg-blue-900/20">
                 <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
                   <Users className="w-5 h-5" />
                   블루팀 ({team1Data.length}/5)
-                  {teamDropTarget === 'team1' && (
-                    <span className="ml-2 text-green-600 font-normal text-sm animate-pulse">
-                      ← 선수 추가됨
-                    </span>
-                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="flex gap-4">
-                  {/* 포지션 영역 */}
                   <PositionColumn members={team1Data} />
-                  
-                  {/* 드래그 가능한 선수명 영역 */}
-                  <PlayerNameColumn 
-                    members={team1Data}
-                    team="team1"
-                    onDragEnd={(event) => handleDragEnd(event, 'team1')}
-                    onReorder={(newMembers) => setTeam1Data(newMembers)}
-                  />
-                  
-                  {/* 챔피언/KDA 영역 */}
-                  <ChampionKdaColumn 
+                  <PlayerNameColumn members={team1Data} />
+                  <ChampionKdaColumn
                     members={team1Data}
                     onUpdate={(memberId, field, value) => updateTeamMember('team1', memberId, field, value)}
                   />
@@ -1084,55 +683,18 @@ export default function MatchResultPage() {
             </Card>
 
             {/* 레드팀 */}
-            <Card 
-              className={`border-red-200 dark:border-red-800 transition-all duration-300 ${
-                teamDropTarget === 'team2' ? 
-                'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-300 dark:border-green-600 shadow-lg scale-[1.02]' : 
-                ''
-              }`}
-              onDragOver={(e) => {
-                e.preventDefault()
-                setTeamDropTarget('team2')
-              }}
-              onDragLeave={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect()
-                const x = e.clientX
-                const y = e.clientY
-                if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-                  setTeamDropTarget(null)
-                }
-              }}
-              onDrop={(e) => {
-                handleCrossTeamDrop(e, 'team2')
-                setTeamDropTarget(null)
-              }}
-            >
+            <Card className="border-red-200 dark:border-red-800">
               <CardHeader className="bg-red-50 dark:bg-red-900/20">
                 <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-300">
                   <Users className="w-5 h-5" />
                   레드팀 ({team2Data.length}/5)
-                  {teamDropTarget === 'team2' && (
-                    <span className="ml-2 text-green-600 font-normal text-sm animate-pulse">
-                      ← 선수 추가됨
-                    </span>
-                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="flex gap-4">
-                  {/* 포지션 영역 */}
                   <PositionColumn members={team2Data} />
-                  
-                  {/* 드래그 가능한 선수명 영역 */}
-                  <PlayerNameColumn 
-                    members={team2Data}
-                    team="team2"
-                    onDragEnd={(event) => handleDragEnd(event, 'team2')}
-                    onReorder={(newMembers) => setTeam2Data(newMembers)}
-                  />
-                  
-                  {/* 챔피언/KDA 영역 */}
-                  <ChampionKdaColumn 
+                  <PlayerNameColumn members={team2Data} />
+                  <ChampionKdaColumn
                     members={team2Data}
                     onUpdate={(memberId, field, value) => updateTeamMember('team2', memberId, field, value)}
                   />
@@ -1143,7 +705,7 @@ export default function MatchResultPage() {
 
           {/* 하단 저장 버튼 */}
           <div className="flex justify-center pt-6">
-            <Button 
+            <Button
               onClick={handleSaveResults}
               disabled={isSaving || !winner}
               size="lg"

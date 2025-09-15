@@ -13,7 +13,8 @@ import { positionNames } from '@/lib/utils'
 import { Users, Crown, Plus, Play, BarChart3, Settings, History, Trophy, Wifi, WifiOff } from 'lucide-react'
 import { useTeamMembersRealtime } from '@/lib/hooks/useTeamMembersRealtime'
 import { usePendingRequestsCount } from '@/lib/hooks/usePendingRequestsRealtime'
-import CreateSessionModal from '@/components/session/CreateSessionModal'
+import TeamBalanceModal from '@/components/session/TeamBalanceModal'
+import MatchResultInputModal from '@/components/session/MatchResultInputModal'
 import InviteMemberModal from '@/components/team/InviteMemberModal'
 import { TierBadge } from '@/components/ui/tier-badge'
 import { TierEditDialog } from '@/components/ui/tier-edit-dialog'
@@ -333,9 +334,14 @@ export default function TeamDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <CreateSessionModal 
-                  teamId={teamId} 
-                  currentUserId={authState.user?.id || ''} 
+                <TeamBalanceModal
+                  teamId={teamId}
+                  currentUserId={authState.user?.id || ''}
+                />
+
+                <MatchResultInputModal
+                  teamId={teamId}
+                  currentUserId={authState.user?.id || ''}
                 />
                 
                 <Button 
