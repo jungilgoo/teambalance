@@ -101,49 +101,51 @@ export function MobileNumberInput({
         </label>
       )}
 
-      <div className="flex items-center gap-2">
-        {/* 감소 버튼 */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-10 w-10 p-0 shrink-0"
-          onClick={handleDecrement}
-          disabled={value <= min}
-        >
-          <Minus className="w-4 h-4" />
-        </Button>
+      <div className="flex items-center justify-center">
+        <div className="flex flex-col items-center gap-1">
+          {/* 증가 버튼 */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-12 p-0"
+            onClick={handleIncrement}
+            disabled={value >= max}
+          >
+            <Plus className="w-3 h-3" />
+          </Button>
 
-        {/* 숫자 입력 */}
-        <div className="flex-1 relative">
-          <Input
-            ref={inputRef}
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            placeholder={placeholder}
-            className="text-center h-10 text-lg font-medium"
-          />
-          {/* 유효 범위 표시 */}
-          <div className="absolute -bottom-5 left-0 right-0 text-xs text-muted-foreground text-center">
-            {min}-{max}
+          {/* 숫자 입력 */}
+          <div className="relative">
+            <Input
+              ref={inputRef}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              placeholder={placeholder}
+              className="text-center h-10 w-16 text-lg font-medium"
+            />
+            {/* 유효 범위 표시 */}
+            <div className="absolute -bottom-5 left-0 right-0 text-xs text-muted-foreground text-center">
+              {min}-{max}
+            </div>
           </div>
-        </div>
 
-        {/* 증가 버튼 */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-10 w-10 p-0 shrink-0"
-          onClick={handleIncrement}
-          disabled={value >= max}
-        >
-          <Plus className="w-4 h-4" />
-        </Button>
+          {/* 감소 버튼 */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-12 p-0"
+            onClick={handleDecrement}
+            disabled={value <= min}
+          >
+            <Minus className="w-3 h-3" />
+          </Button>
+        </div>
       </div>
     </div>
   )
