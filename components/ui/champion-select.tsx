@@ -37,6 +37,25 @@ export function ChampionSelect({
   const [open, setOpen] = React.useState(false)
   const isMobile = useIsMobile()
 
+  // 휠 이벤트 처리
+  const handleWheel = React.useCallback((e: React.WheelEvent) => {
+    if (champions.length === 0 || isMobile) return
+
+    e.preventDefault()
+
+    const currentIndex = champions.findIndex(champion => champion === value)
+    const delta = e.deltaY > 0 ? 1 : -1
+
+    let newIndex = currentIndex + delta
+    if (newIndex < 0) newIndex = champions.length - 1
+    if (newIndex >= champions.length) newIndex = 0
+
+    const newChampion = champions[newIndex]
+    if (newChampion && onValueChange) {
+      onValueChange(newChampion)
+    }
+  }, [value, onValueChange, isMobile])
+
   // 모바일에서는 모달 사용, 데스크톱에서는 드롭다운 사용
   if (isMobile) {
     return (
@@ -61,18 +80,19 @@ export function ChampionSelect({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("justify-between", className)}
-        >
-          {value || placeholder}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
+    <div onWheel={handleWheel}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn("justify-between", className)}
+          >
+            {value || placeholder}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
       <PopoverContent className="p-0" align="start">
         <Command>
           <CommandInput placeholder="챔피언 검색..." />
@@ -105,5 +125,6 @@ export function ChampionSelect({
         </Command>
       </PopoverContent>
     </Popover>
+    </div>
   )
 }

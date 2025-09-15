@@ -93,18 +93,23 @@ export function NumberWheel({
 
   // 마우스 휠 처리
   const handleWheel = (e: React.WheelEvent) => {
-    if (!isOpen) return
-    
+    // 컴포넌트 위에서 휠 사용 시 항상 동작하도록 수정
     // passive event listener 경고를 방지하기 위해 조건부로만 preventDefault 호출
     if (e.cancelable) {
       e.preventDefault()
     }
-    
+
     const delta = e.deltaY > 0 ? 1 : -1
     const newValue = Math.min(max, Math.max(min, value + delta))
     if (newValue !== value) {
       onChange(newValue)
       setInputValue(newValue.toString())
+    }
+
+    // 편집 중이지 않고 휠로 값을 변경했을 때는 잠시 열어서 시각적 피드백 제공
+    if (!isEditing && !isOpen) {
+      setIsOpen(true)
+      setTimeout(() => setIsOpen(false), 300)
     }
   }
 

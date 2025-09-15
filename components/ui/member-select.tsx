@@ -49,6 +49,25 @@ export function MemberSelect({
   // 현재 선택된 멤버 찾기
   const selectedMember = members.find(member => member.id === value)
 
+  // 휠 이벤트 처리
+  const handleWheel = React.useCallback((e: React.WheelEvent) => {
+    if (availableMembers.length === 0 || isMobile) return
+
+    e.preventDefault()
+
+    const currentIndex = availableMembers.findIndex(member => member.id === value)
+    const delta = e.deltaY > 0 ? 1 : -1
+
+    let newIndex = currentIndex + delta
+    if (newIndex < 0) newIndex = availableMembers.length - 1
+    if (newIndex >= availableMembers.length) newIndex = 0
+
+    const newMember = availableMembers[newIndex]
+    if (newMember && onValueChange) {
+      onValueChange(newMember.id)
+    }
+  }, [availableMembers, value, onValueChange, isMobile])
+
   // 모바일에서는 모달 사용, 데스크톱에서는 드롭다운 사용
   if (isMobile) {
     return (
@@ -75,18 +94,19 @@ export function MemberSelect({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("justify-between", className)}
-        >
-          {selectedMember ? selectedMember.nickname : placeholder}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
+    <div onWheel={handleWheel}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn("justify-between", className)}
+          >
+            {selectedMember ? selectedMember.nickname : placeholder}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
       <PopoverContent className="p-0" align="start">
         <Command>
           <CommandInput placeholder="멤버 검색..." />
@@ -126,5 +146,6 @@ export function MemberSelect({
         </Command>
       </PopoverContent>
     </Popover>
+    </div>
   )
 }
