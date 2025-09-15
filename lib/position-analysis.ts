@@ -1,5 +1,5 @@
 import { Position, TeamMember } from './types'
-import { getMemberPositionPreferences, canMemberPlay, getMemberSkillWeight } from './types'
+import { getMemberPositionPreferences, canMemberPlay } from './types'
 import { calculateMemberTierScore } from './stats'
 import { simpleBalancingAlgorithm, type SimpleBalancingResult } from './simple-balancing'
 
@@ -7,7 +7,6 @@ import { simpleBalancingAlgorithm, type SimpleBalancingResult } from './simple-b
 export interface PositionCoverage {
   position: Position
   availableMembers: string[] // member IDs
-  skillWeights: Record<string, number> // memberId -> skill weight
   coverageScore: number // 0-100, 100이 최적
 }
 
@@ -59,13 +58,11 @@ export function analyzeTeamFormation(members: TeamMember[]): TeamFormationAnalys
 // 특정 포지션의 커버리지 분석
 export function analyzePositionCoverage(position: Position, members: TeamMember[]): PositionCoverage {
   const availableMembers: string[] = []
-  const skillWeights: Record<string, number> = {}
 
   // 해당 포지션을 플레이할 수 있는 멤버들 찾기
   for (const member of members) {
     if (canMemberPlay(member, position)) {
       availableMembers.push(member.id)
-      skillWeights[member.id] = getMemberSkillWeight(member, position)
     }
   }
 
@@ -75,23 +72,17 @@ export function analyzePositionCoverage(position: Position, members: TeamMember[
   if (availableMembers.length === 0) {
     coverageScore = 0 // 아무도 플레이할 수 없음
   } else if (availableMembers.length === 1) {
-    // 한 명만 가능한 경우, 스킬 가중치에 따라 점수 결정
-    const weight = Math.max(...Object.values(skillWeights))
-    coverageScore = Math.min(weight * 100, 85) // 최대 85점 (리스크 있음)
+    // 한 명만 가능한 경우
+    coverageScore = 85 // 리스크가 있지만 가능
   } else {
-    // 여러 명 가능한 경우, 최고 스킬 가중치 + 백업 보너스
-    const weights = Object.values(skillWeights).sort((a, b) => b - a)
-    const primaryScore = weights[0] * 70
-    const backupBonus = weights[1] ? weights[1] * 20 : 0
-    const diversityBonus = Math.min(availableMembers.length * 2, 10)
-    
-    coverageScore = Math.min(primaryScore + backupBonus + diversityBonus, 100)
+    // 여러 명 가능한 경우
+    const diversityBonus = Math.min(availableMembers.length * 10, 30)
+    coverageScore = Math.min(70 + diversityBonus, 100)
   }
 
   return {
     position,
     availableMembers,
-    skillWeights,
     coverageScore: Math.round(coverageScore)
   }
 }
@@ -109,13 +100,13 @@ export function recommendOptimalPositions(members: TeamMember[]): Record<string,
       !assignedMembers.has(member.id) &&
       canMemberPlay(member, position) &&
       getMemberPositionPreferences(member).length === 1 &&
-      (getMemberPositionPreferences(member)[0] as any).position === position
+      getMemberPositionPreferences(member)[0] === position
     )
 
     if (exclusiveMembers.length > 0) {
-      // 스킬이 가장 높은 멤버 선택
+      // 티어 점수가 가장 높은 멤버 선택
       const bestMember = exclusiveMembers.reduce((best, current) => 
-        getMemberSkillWeight(current, position) > getMemberSkillWeight(best, position) ? current : best
+        (current.stats.tierScore || 0) > (best.stats.tierScore || 0) ? current : best
       )
       
       assignments[bestMember.id] = position
@@ -134,10 +125,20 @@ export function recommendOptimalPositions(members: TeamMember[]): Record<string,
     )
 
     if (availableMembers.length > 0) {
-      // 해당 포지션에서 스킬이 가장 높은 멤버 선택
-      const bestMember = availableMembers.reduce((best, current) => 
-        getMemberSkillWeight(current, position) > getMemberSkillWeight(best, position) ? current : best
-      )
+      // 티어 점수가 가장 높은 멤버 선택 (메인 포지션 우선)
+      const bestMember = availableMembers.reduce((best, current) => {
+        const currentScore = current.stats.tierScore || 0
+        const bestScore = best.stats.tierScore || 0
+        
+        // 메인 포지션인 경우 우선권
+        const currentIsMain = current.mainPosition === position
+        const bestIsMain = best.mainPosition === position
+        
+        if (currentIsMain && !bestIsMain) return current
+        if (!currentIsMain && bestIsMain) return best
+        
+        return currentScore > bestScore ? current : best
+      })
       
       assignments[bestMember.id] = position
       assignedMembers.add(bestMember.id)
@@ -209,20 +210,13 @@ export function simulateTeamComposition(
   }
 }
 
-// 포지션별 가중 점수 계산 (포지션 스킬을 반영한 실제 실력)
-export function getPositionWeightedScore(member: TeamMember, position: Position): number {
-  const baseScore = member.stats.tierScore || 0
-  const positionWeight = getMemberSkillWeight(member, position)
-  return Math.round(baseScore * positionWeight)
-}
 
 // 포지션별 후보 멤버 분석
 export interface PositionCandidate {
   memberId: string
   member: TeamMember
-  weightedScore: number
+  tierScore: number
   isMainPosition: boolean
-  skillWeight: number
 }
 
 export interface PositionCandidates {
@@ -241,22 +235,26 @@ export function analyzePositionCandidates(members: TeamMember[]): PositionCandid
 
     for (const member of members) {
       if (canMemberPlay(member, position)) {
-        const skillWeight = getMemberSkillWeight(member, position)
-        const weightedScore = getPositionWeightedScore(member, position)
+        const tierScore = member.stats.tierScore || 0
         const isMainPosition = member.mainPosition === position
 
         candidates.push({
           memberId: member.id,
           member,
-          weightedScore,
-          isMainPosition,
-          skillWeight
+          tierScore,
+          isMainPosition
         })
       }
     }
 
-    // 가중 점수 순으로 정렬 (높은 점수부터)
-    candidates.sort((a, b) => b.weightedScore - a.weightedScore)
+    // 티어 점수 순으로 정렬 (높은 점수부터, 메인 포지션 우선)
+    candidates.sort((a, b) => {
+      // 메인 포지션 우선
+      if (a.isMainPosition && !b.isMainPosition) return -1
+      if (!a.isMainPosition && b.isMainPosition) return 1
+      // 같은 조건이면 티어 점수로
+      return b.tierScore - a.tierScore
+    })
 
     positionCandidates.push({
       position,
@@ -298,11 +296,11 @@ export function analyzeTeamPositionBalance(
     if (positionData) {
       if (team1MemberId) {
         const candidate = positionData.candidates.find(c => c.memberId === team1MemberId)
-        team1Score = candidate?.weightedScore || 0
+        team1Score = candidate?.tierScore || 0
       }
       if (team2MemberId) {
         const candidate = positionData.candidates.find(c => c.memberId === team2MemberId)
-        team2Score = candidate?.weightedScore || 0
+        team2Score = candidate?.tierScore || 0
       }
     }
 

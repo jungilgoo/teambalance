@@ -354,19 +354,6 @@ export function canMemberPlay(member: TeamMember, position: Position): boolean {
   return member.mainPosition === position || member.subPositions.includes(position)
 }
 
-export function getMemberSkillWeight(member: TeamMember, position: Position): number {
-  // 멤버의 기존 tierScore를 사용하거나, calculateTierScore로 계산
-  const baseTierScore = member.stats.tierScore
-  
-  // 메인 포지션이면 100%, 서브 포지션이면 80%
-  if (member.mainPosition === position) {
-    return baseTierScore
-  } else if (member.subPositions.includes(position)) {
-    return baseTierScore * 0.8
-  } else {
-    return baseTierScore * 0.5 // 할 수 없는 포지션은 50%
-  }
-}
 
 export function getMemberPositionPreferences(member: TeamMember): Position[] {
   // 메인 포지션을 첫 번째로, 서브 포지션들을 그 뒤에
