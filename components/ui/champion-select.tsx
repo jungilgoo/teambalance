@@ -10,6 +10,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from '@/components/ui/command'
 import {
   Popover,
@@ -50,7 +51,8 @@ export function ChampionSelect({
         <Command>
           <CommandInput placeholder="챔피언 검색..." />
           <CommandEmpty>챔피언을 찾을 수 없습니다.</CommandEmpty>
-          <CommandGroup className="max-h-[200px] overflow-y-auto">
+          <CommandList>
+            <CommandGroup>
             {champions.map((champion) => (
               <CommandItem
                 key={champion}
@@ -72,7 +74,8 @@ export function ChampionSelect({
                 {champion}
               </CommandItem>
             ))}
-          </CommandGroup>
+            </CommandGroup>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>

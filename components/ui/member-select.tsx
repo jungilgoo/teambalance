@@ -10,6 +10,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from '@/components/ui/command'
 import {
   Popover,
@@ -62,7 +63,8 @@ export function MemberSelect({
         <Command>
           <CommandInput placeholder="멤버 검색..." />
           <CommandEmpty>멤버를 찾을 수 없습니다.</CommandEmpty>
-          <CommandGroup className="max-h-[200px] overflow-y-auto">
+          <CommandList>
+            <CommandGroup>
             {availableMembers.map((member) => (
               <CommandItem
                 key={member.id}
@@ -91,7 +93,8 @@ export function MemberSelect({
                 </div>
               </CommandItem>
             ))}
-          </CommandGroup>
+            </CommandGroup>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>
