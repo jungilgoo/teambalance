@@ -41,12 +41,13 @@ export function ChampionSelect({
   const handleWheel = React.useCallback((e: React.WheelEvent) => {
     if (champions.length === 0 || isMobile) return
 
-    // 드롭다운이 닫혀있을 때만 열기
+    // 드롭다운이 닫혀있을 때만 열기하고 이벤트 차단
     if (!open) {
       e.preventDefault()
+      e.stopPropagation()
       setOpen(true)
     }
-    // 드롭다운이 열려있을 때는 자연스러운 스크롤 허용
+    // 드롭다운이 열려있을 때는 이벤트를 자연스럽게 전파
   }, [isMobile, open])
 
   // 모바일에서는 모달 사용, 데스크톱에서는 드롭다운 사용
@@ -86,11 +87,24 @@ export function ChampionSelect({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-      <PopoverContent className="p-0" align="start">
+      <PopoverContent
+        className="p-0"
+        align="start"
+        onWheel={(e) => {
+          // PopoverContent 내부에서 휠 스크롤 허용
+          e.stopPropagation()
+        }}
+      >
         <Command>
           <CommandInput placeholder="챔피언 검색..." />
           <CommandEmpty>챔피언을 찾을 수 없습니다.</CommandEmpty>
-          <CommandList className="max-h-60 overflow-y-auto">
+          <CommandList
+            className="max-h-60 overflow-y-auto"
+            onWheel={(e) => {
+              // CommandList에서 휠 스크롤 허용
+              e.stopPropagation()
+            }}
+          >
             <CommandGroup>
             {champions.map((champion) => (
               <CommandItem
