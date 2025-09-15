@@ -315,17 +315,17 @@ export default function EditMatchModal({
                         <div className="space-y-2">
                           <MemberSelect
                             members={teamMembers}
-                            selectedMemberId={teamData[team][position].memberId}
-                            onMemberChange={(memberId) => 
+                            value={teamData[team][position].memberId}
+                            onValueChange={(memberId) => 
                               updateTeamData(team, position, 'memberId', memberId)
                             }
-                            excludeIds={getSelectedMemberIds(team, position)}
+                            excludeMembers={getSelectedMemberIds(team, position)}
                             placeholder="멤버 선택"
                           />
                           
                           <ChampionSelect
-                            selectedChampion={teamData[team][position].champion}
-                            onChampionChange={(champion) => 
+                            value={teamData[team][position].champion}
+                            onValueChange={(champion) => 
                               updateTeamData(team, position, 'champion', champion)
                             }
                             placeholder="챔피언 선택"
