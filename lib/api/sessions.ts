@@ -236,12 +236,21 @@ export const saveMatchResult = async (matchData: {
     console.log('🏁 매치 결과 저장 시작:', { sessionId: matchData.sessionId, winningTeam: matchData.winningTeam })
     
     // 입력값 검증
-    const validatedSessionId = validateUUID(matchData.sessionId)
     const validatedTeamId = validateUUID(matchData.teamId)
     
-    if (!validatedSessionId || !validatedTeamId) {
-      console.error('❌ 매치 결과 저장 입력값 검증 실패')
+    if (!validatedTeamId) {
+      console.error('❌ 매치 결과 저장 입력값 검증 실패 - 유효하지 않은 teamId')
       return false
+    }
+
+    // sessionId 검증 (빈 문자열일 경우 모달 전용으로 처리)
+    let validatedSessionId: string | null = null
+    if (matchData.sessionId && matchData.sessionId.trim() !== '') {
+      validatedSessionId = validateUUID(matchData.sessionId)
+      if (!validatedSessionId) {
+        console.error('❌ 매치 결과 저장 입력값 검증 실패 - 유효하지 않은 sessionId')
+        return false
+      }
     }
 
     // 모든 멤버 ID 검증
@@ -255,11 +264,13 @@ export const saveMatchResult = async (matchData: {
     
     console.log('✅ 모든 멤버 ID 검증 완료:', { validCount: memberValidation.valid.length })
 
-    // 중복 매치 방지: 이미 해당 세션에 매치가 존재하는지 확인
-    const existingMatch = await getMatchBySessionId(validatedSessionId)
-    if (existingMatch) {
-      console.log('⚠️ 이미 해당 세션에 매치가 존재합니다. 업데이트를 사용해주세요.', { sessionId: validatedSessionId })
-      return false
+    // 중복 매치 방지: 세션이 있는 경우에만 중복 검사
+    if (validatedSessionId) {
+      const existingMatch = await getMatchBySessionId(validatedSessionId)
+      if (existingMatch) {
+        console.log('⚠️ 이미 해당 세션에 매치가 존재합니다. 업데이트를 사용해주세요.', { sessionId: validatedSessionId })
+        return false
+      }
     }
 
     // MVP 계산을 위한 Match 객체 생성
@@ -275,7 +286,7 @@ export const saveMatchResult = async (matchData: {
 
     // 매치 결과 저장 (실제 데이터베이스 스키마에 맞춤)
     const matchResult = {
-      session_id: validatedSessionId,
+      session_id: validatedSessionId, // null 가능 (모달 전용 경기의 경우)
       team_id: validatedTeamId,
       winner: matchData.winningTeam, // winning_team → winner
       mvp_member_id: mvpMemberId, // MVP 멤버 ID 저장
