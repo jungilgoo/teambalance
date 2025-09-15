@@ -454,7 +454,6 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
                   </div>
                   <div className="space-y-3">
                     {balancedTeams.team1.map((member) => {
-                      const assignedPosition = balancedTeams.positionAnalysis.team1Assignments[member.id]
                       return (
                         <div key={member.id} className="p-3 bg-white dark:bg-gray-800 rounded-lg border">
                           <div className="flex justify-between items-start mb-2">
@@ -464,8 +463,7 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
                             </div>
                           </div>
                           <PositionCoverageDisplay 
-                            member={member} 
-                            assignedPosition={assignedPosition as any}
+                            member={member}
                           />
                         </div>
                       )
@@ -483,7 +481,6 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
                   </div>
                   <div className="space-y-3">
                     {balancedTeams.team2.map((member) => {
-                      const assignedPosition = balancedTeams.positionAnalysis.team2Assignments[member.id]
                       return (
                         <div key={member.id} className="p-3 bg-white dark:bg-gray-800 rounded-lg border">
                           <div className="flex justify-between items-start mb-2">
@@ -493,8 +490,7 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
                             </div>
                           </div>
                           <PositionCoverageDisplay 
-                            member={member} 
-                            assignedPosition={assignedPosition as any}
+                            member={member}
                           />
                         </div>
                       )

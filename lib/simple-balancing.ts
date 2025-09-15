@@ -67,28 +67,54 @@ export function validatePositionCandidates(candidates: PositionCandidates): { va
   return { valid: true, message: '모든 포지션에 후보가 있습니다.' }
 }
 
-// 포지션 커버리지 우선 밸런싱 알고리즘
-export function generatePositionCoverageBalancing(
-  candidates: PositionCandidates,
+// 간단한 포지션 커버리지 밸런싱 알고리즘 (포지션 할당 없음)
+export function generateSimplePositionCoverageBalancing(
   members: TeamMember[]
 ): SimpleBalancingResult {
   const positions: Position[] = ['top', 'jungle', 'mid', 'adc', 'support']
-  console.log('🎯 포지션 커버리지 우선 밸런싱 시작')
+  console.log('🎯 간단한 포지션 커버리지 밸런싱 시작')
   
-  // 1단계: 각 포지션별 후보 수 확인
-  const positionCounts = positions.map(pos => ({
-    position: pos,
-    candidates: candidates[pos],
-    count: candidates[pos].length
-  })).sort((a, b) => a.count - b.count) // 후보가 적은 포지션부터 우선 처리
-
-  console.log('📊 포지션별 후보 수:', positionCounts.map(p => 
-    `${p.position}: ${p.count}명`).join(', '))
-
-  // 2단계: 모든 가능한 팀 조합 생성 (포지션 커버리지 우선)
-  const validTeamSplits = generateTeamSplitsWithPositionCoverage(members, candidates)
+  // 모든 가능한 5명 팀 조합 생성
+  const combinations = getCombinations(members, 5)
+  console.log(`💭 ${combinations.length}개의 팀 조합 검토 중...`)
   
-  if (validTeamSplits.length === 0) {
+  const validSplits: Array<{
+    team1: TeamMember[]
+    team2: TeamMember[]
+    team1Score: number
+    team2Score: number
+    scoreDifference: number
+  }> = []
+  
+  // 성능을 위해 최대 2000개 조합만 검토
+  const maxCombinations = Math.min(combinations.length, 2000)
+  
+  for (let i = 0; i < maxCombinations; i++) {
+    const team1 = combinations[i]
+    const team2 = members.filter(m => !team1.find(t1 => t1.id === m.id))
+    
+    // 각 팀이 모든 포지션을 최소 2명씩 커버할 수 있는지 확인
+    const team1Valid = checkMinimumPositionCoverage(team1, positions)
+    const team2Valid = checkMinimumPositionCoverage(team2, positions)
+    
+    if (team1Valid && team2Valid) {
+      const team1Score = team1.reduce((sum, member) => sum + calculateMemberTierScore(member), 0)
+      const team2Score = team2.reduce((sum, member) => sum + calculateMemberTierScore(member), 0)
+      const scoreDifference = Math.abs(team1Score - team2Score)
+      
+      validSplits.push({
+        team1,
+        team2,
+        team1Score,
+        team2Score,
+        scoreDifference
+      })
+    }
+  }
+  
+  console.log(`✅ ${validSplits.length}개의 유효한 포지션 커버리지 조합 발견`)
+  
+  if (validSplits.length === 0) {
     return {
       success: false,
       team1: [],
@@ -98,27 +124,25 @@ export function generatePositionCoverageBalancing(
       team1TotalScore: 0,
       team2TotalScore: 0,
       scoreDifference: 0,
-      message: '포지션 커버리지를 만족하는 팀 조합을 찾을 수 없습니다.'
+      message: '각 포지션에 최소 2명씩 배정할 수 있는 팀 조합이 없습니다.'
     }
   }
-
-  // 3단계: 점수 차이가 가장 적은 조합 선택
-  const bestSplit = validTeamSplits.reduce((best, current) => {
-    return current.scoreDifference < best.scoreDifference ? current : best
-  })
-
-  console.log(`🎉 포지션 커버리지 우선 밸런싱 성공! 점수차: ${bestSplit.scoreDifference}`)
+  
+  // 점수 차이가 가장 적은 조합 선택
+  const bestSplit = validSplits.sort((a, b) => a.scoreDifference - b.scoreDifference)[0]
+  
+  console.log(`🎉 간단한 포지션 커버리지 밸런싱 성공! 점수차: ${bestSplit.scoreDifference}`)
   
   return {
     success: true,
     team1: bestSplit.team1,
     team2: bestSplit.team2,
-    team1Assignments: bestSplit.team1Assignments,
-    team2Assignments: bestSplit.team2Assignments,
+    team1Assignments: {}, // 포지션 할당 없음
+    team2Assignments: {}, // 포지션 할당 없음
     team1TotalScore: bestSplit.team1Score,
     team2TotalScore: bestSplit.team2Score,
     scoreDifference: bestSplit.scoreDifference,
-    message: `포지션 커버리지 우선 밸런싱 완료 (점수차: ${bestSplit.scoreDifference})`
+    message: `포지션 커버리지 밸런싱 완료 (점수차: ${bestSplit.scoreDifference}점)`
   }
 }
 
@@ -179,7 +203,28 @@ function generateTeamSplitsWithPositionCoverage(
   return validSplits.sort((a, b) => a.scoreDifference - b.scoreDifference)
 }
 
-// 포지션 커버리지 확인
+// 각 포지션에 최소 2명씩 있는지 확인
+function checkMinimumPositionCoverage(
+  team: TeamMember[], 
+  positions: Position[]
+): boolean {
+  const coverage: Record<Position, number> = {
+    top: 0, jungle: 0, mid: 0, adc: 0, support: 0
+  }
+  
+  for (const member of team) {
+    for (const position of positions) {
+      if (canMemberPlay(member, position)) {
+        coverage[position]++
+      }
+    }
+  }
+  
+  // 모든 포지션에 최소 2명씩 있어야 함
+  return positions.every(pos => coverage[pos] >= 2)
+}
+
+// 포지션 커버리지 확인 (기존 함수 유지 - 호환성)
 function checkPositionCoverage(
   team: TeamMember[], 
   positions: Position[]
@@ -458,9 +503,9 @@ export function simpleBalancingAlgorithm(members: TeamMember[]): SimpleBalancing
       }
     }
 
-    // 3단계: 포지션 커버리지 우선 밸런싱 실행
-    console.log('🎯 포지션 커버리지 우선 밸런싱 실행...')
-    const result = generatePositionCoverageBalancing(candidates, members)
+    // 3단계: 간단한 포지션 커버리지 밸런싱 실행
+    console.log('🎯 간단한 포지션 커버리지 밸런싱 실행...')
+    const result = generateSimplePositionCoverageBalancing(members)
     
     if (result.success) {
       console.log(`🎉 포지션 커버리지 우선 밸런싱 완료! 점수 차이: ${result.scoreDifference}`)
