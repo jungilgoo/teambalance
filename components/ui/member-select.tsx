@@ -38,6 +38,25 @@ export function MemberSelect({
 }: MemberSelectProps) {
   const [open, setOpen] = React.useState(false)
 
+  // 모바일에서 드롭다운 열릴 때 body 스크롤 방지
+  React.useEffect(() => {
+    if (open && typeof window !== 'undefined') {
+      const isMobile = window.innerWidth <= 768
+      if (isMobile) {
+        document.body.style.overflow = 'hidden'
+        document.body.style.touchAction = 'none'
+      }
+    } else {
+      document.body.style.overflow = ''
+      document.body.style.touchAction = ''
+    }
+
+    return () => {
+      document.body.style.overflow = ''
+      document.body.style.touchAction = ''
+    }
+  }, [open])
+
   // 선택 가능한 멤버들 (제외 목록 필터링)
   const availableMembers = members.filter(member =>
     !excludeMembers.includes(member.id)
@@ -59,11 +78,25 @@ export function MemberSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="p-0" align="start">
+      <PopoverContent
+        className="p-0"
+        align="start"
+        style={{
+          touchAction: 'manipulation',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
         <Command>
           <CommandInput placeholder="멤버 검색..." />
           <CommandEmpty>멤버를 찾을 수 없습니다.</CommandEmpty>
-          <CommandList>
+          <CommandList
+            style={{
+              maxHeight: '200px',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-y'
+            }}
+          >
             <CommandGroup>
             {availableMembers.map((member) => (
               <CommandItem

@@ -124,27 +124,103 @@
     -webkit-box-orient: vertical;
   }
 
-  /* 드롭다운 스크롤 개선 */
+  /* 드롭다운 스크롤 개선 - 모바일 최적화 */
   .dropdown-scroll {
     scrollbar-width: thin;
     scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
     -webkit-overflow-scrolling: touch;
+    /* 모바일 터치 스크롤 강제 활성화 */
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+    /* iOS 웹킷 추가 최적화 */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
   }
 
   .dropdown-scroll::-webkit-scrollbar {
     width: 6px;
+    -webkit-appearance: none;
   }
 
   .dropdown-scroll::-webkit-scrollbar-track {
     background: transparent;
+    -webkit-border-radius: 0;
+    border-radius: 0;
   }
 
   .dropdown-scroll::-webkit-scrollbar-thumb {
     background-color: rgba(156, 163, 175, 0.5);
     border-radius: 3px;
+    -webkit-border-radius: 3px;
+    -webkit-box-shadow: 0 0 1px rgba(255,255,255,.5);
   }
 
   .dropdown-scroll::-webkit-scrollbar-thumb:hover {
     background-color: rgba(156, 163, 175, 0.8);
+  }
+
+  /* 모바일 전용 스크롤 최적화 */
+  @media (max-width: 768px) {
+    .dropdown-scroll {
+      /* 모바일에서 스크롤 영역 더 명확하게 */
+      overflow-y: scroll !important;
+      -webkit-overflow-scrolling: touch !important;
+      /* 모바일 브라우저 스크롤 동작 강제 */
+      will-change: scroll-position;
+      /* 터치 이벤트 최적화 */
+      touch-action: pan-y !important;
+      /* iOS Safari 스크롤 고정 */
+      -webkit-transform: translate3d(0,0,0);
+      transform: translate3d(0,0,0);
+      /* 모바일 스크롤 바운스 제어 */
+      overscroll-behavior-y: contain;
+    }
+
+    /* 모바일에서 스크롤바 숨기기 */
+    .dropdown-scroll::-webkit-scrollbar {
+      width: 0px;
+      background: transparent;
+    }
+
+    /* Command 컴포넌트 모바일 최적화 */
+    [cmdk-list] {
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-y !important;
+      max-height: 200px !important;
+    }
+
+    /* Popover 컨테이너 터치 최적화 */
+    [data-radix-popper-content-wrapper] {
+      touch-action: manipulation !important;
+    }
+
+    /* 모바일 드롭다운 강제 스크롤 활성화 */
+    [data-radix-popover-content] {
+      touch-action: manipulation !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* cmdk 라이브러리 모바일 최적화 */
+    [cmdk-root] {
+      touch-action: manipulation !important;
+    }
+
+    [cmdk-input] {
+      touch-action: manipulation !important;
+    }
+
+    [cmdk-item] {
+      touch-action: manipulation !important;
+    }
+
+    /* 강제 터치 스크롤 클래스 */
+    .force-touch-scroll {
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-y !important;
+      position: relative !important;
+      z-index: 1 !important;
+    }
   }
 }
