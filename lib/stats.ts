@@ -166,43 +166,35 @@ export const calculateWinRate = (wins: number, losses: number): number => {
   return total > 0 ? Math.round((wins / total) * 100) : 0
 }
 
-// 티어 점수 계산 함수 (팀 밸런싱용 - CLAUDE.md 기준)
+// 티어 점수 계산 함수 (승패 기반 동적 시스템)
 export const calculateTierScore = (tier: TierType, stats?: { totalWins: number, totalLosses: number, mainPositionGames: number, mainPositionWins: number, subPositionGames: number, subPositionWins: number }): number => {
-  // 기본 티어 점수 매핑
+  // 새로운 50점 단위 티어 점수 매핑
   const tierScoreMap: Record<TierType, number> = {
-    iron_iv: 400, iron_iii: 500, iron_ii: 600, iron_i: 700,
-    bronze_iv: 800, bronze_iii: 900, bronze_ii: 1000, bronze_i: 1100,
-    silver_iv: 1200, silver_iii: 1300, silver_ii: 1400, silver_i: 1500,
-    gold_iv: 1600, gold_iii: 1700, gold_ii: 1800, gold_i: 1900,
-    platinum_iv: 2000, platinum_iii: 2100, platinum_ii: 2200, platinum_i: 2300,
-    emerald_iv: 2400, emerald_iii: 2500, emerald_ii: 2600, emerald_i: 2700,
-    diamond_iv: 2800, diamond_iii: 2900, diamond_ii: 3000, diamond_i: 3100,
-    master: 3300,
-    grandmaster: 3600,
-    challenger: 4000
+    iron_iv: 400, iron_iii: 450, iron_ii: 500, iron_i: 550,
+    bronze_iv: 600, bronze_iii: 650, bronze_ii: 700, bronze_i: 750,
+    silver_iv: 800, silver_iii: 850, silver_ii: 900, silver_i: 950,
+    gold_iv: 1000, gold_iii: 1050, gold_ii: 1100, gold_i: 1150,
+    platinum_iv: 1200, platinum_iii: 1250, platinum_ii: 1300, platinum_i: 1350,
+    emerald_iv: 1400, emerald_iii: 1450, emerald_ii: 1500, emerald_i: 1550,
+    diamond_iv: 1600, diamond_iii: 1650, diamond_ii: 1700, diamond_i: 1750,
+    master: 1800,
+    grandmaster: 1900,
+    challenger: 2000
   }
 
-  const baseTierScore = tierScoreMap[tier] || 1000
+  const baseTierScore = tierScoreMap[tier] || 800
   
   // stats가 없는 경우 기본 티어 점수 반환
   if (!stats) {
     return baseTierScore
   }
   
-  const totalGames = stats.totalWins + stats.totalLosses
-  const winRate = totalGames > 0 ? stats.totalWins / totalGames : 0
-
-  // 경기 수에 따른 계산 방식 (CLAUDE.md 기준)
-  if (totalGames <= 5) {
-    // 0~5경기: 티어 점수 100%
-    return baseTierScore
-  } else if (totalGames <= 20) {
-    // 5~20경기: 티어 70% + 승률 30%
-    return Math.round(baseTierScore * 0.7 + winRate * 1000 * 0.3)
-  } else {
-    // 20경기 이상: 티어 50% + 승률 50%
-    return Math.round(baseTierScore * 0.5 + winRate * 1000 * 0.5)
-  }
+  // 승패 기반 동적 점수 계산: 승리 +50점, 패배 -50점
+  const netWins = stats.totalWins - stats.totalLosses
+  const adjustedScore = baseTierScore + (netWins * 50)
+  
+  // 최소값 보장: 아이언4(400점) 이하로는 떨어지지 않음
+  return Math.max(400, adjustedScore)
 }
 
 // TeamMember 객체로부터 직접 티어 점수 계산하는 편의 함수
