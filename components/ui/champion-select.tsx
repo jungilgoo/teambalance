@@ -37,24 +37,17 @@ export function ChampionSelect({
   const [open, setOpen] = React.useState(false)
   const isMobile = useIsMobile()
 
-  // 휠 이벤트 처리
+  // 휠 이벤트 처리 - 드롭다운 열기
   const handleWheel = React.useCallback((e: React.WheelEvent) => {
     if (champions.length === 0 || isMobile) return
 
-    e.preventDefault()
-
-    const currentIndex = champions.findIndex(champion => champion === value)
-    const delta = e.deltaY > 0 ? 1 : -1
-
-    let newIndex = currentIndex + delta
-    if (newIndex < 0) newIndex = champions.length - 1
-    if (newIndex >= champions.length) newIndex = 0
-
-    const newChampion = champions[newIndex]
-    if (newChampion && onValueChange) {
-      onValueChange(newChampion)
+    // 드롭다운이 닫혀있을 때만 열기
+    if (!open) {
+      e.preventDefault()
+      setOpen(true)
     }
-  }, [value, onValueChange, isMobile])
+    // 드롭다운이 열려있을 때는 자연스러운 스크롤 허용
+  }, [isMobile, open])
 
   // 모바일에서는 모달 사용, 데스크톱에서는 드롭다운 사용
   if (isMobile) {
@@ -97,7 +90,7 @@ export function ChampionSelect({
         <Command>
           <CommandInput placeholder="챔피언 검색..." />
           <CommandEmpty>챔피언을 찾을 수 없습니다.</CommandEmpty>
-          <CommandList>
+          <CommandList className="max-h-60 overflow-y-auto">
             <CommandGroup>
             {champions.map((champion) => (
               <CommandItem
