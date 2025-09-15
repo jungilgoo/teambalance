@@ -27,7 +27,6 @@ export default function PositionCoverageDisplay({
     <div className={`flex flex-wrap gap-1 ${className}`}>
       {positions.map((position) => {
         const canPlay = canMemberPlay(member, position)
-        const isMainPosition = member.mainPosition === position
         
         return (
           <span
@@ -35,15 +34,12 @@ export default function PositionCoverageDisplay({
             className={`
               px-2 py-1 text-xs rounded font-medium
               ${canPlay
-                ? isMainPosition
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-semibold'
-                  : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                 : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
               }
             `}
           >
             {positionNames[position]}
-            {isMainPosition && ' ★'}
           </span>
         )
       })}
