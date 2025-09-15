@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { MobileNumberInput } from '@/components/ui/mobile-number-input'
+import { useIsMobile } from '@/lib/hooks/useMediaQuery'
 
 interface NumberWheelProps {
   value: number
@@ -12,14 +14,15 @@ interface NumberWheelProps {
   className?: string
 }
 
-export function NumberWheel({ 
-  value, 
-  onChange, 
-  min = 0, 
-  max = 30, 
+export function NumberWheel({
+  value,
+  onChange,
+  min = 0,
+  max = 30,
   placeholder,
   className = ''
 }: NumberWheelProps) {
+  const isMobile = useIsMobile()
   const [isOpen, setIsOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [inputValue, setInputValue] = useState(value.toString())
@@ -155,8 +158,22 @@ export function NumberWheel({
     setIsOpen(false)
   }
 
+  // 모바일에서는 + / - 버튼 사용, 데스크톱에서는 기존 휴 방식 사용
+  if (isMobile) {
+    return (
+      <MobileNumberInput
+        value={value}
+        onChange={onChange}
+        min={min}
+        max={max}
+        placeholder={placeholder}
+        className={className}
+      />
+    )
+  }
+
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`relative ${className}`}
       onWheel={handleWheel}
