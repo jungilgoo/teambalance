@@ -3,15 +3,24 @@ import { createClient } from '@supabase/supabase-js'
 import { calculateTierScore } from '@/lib/stats'
 import type { TierType } from '@/lib/types'
 
-// Supabase Admin 클라이언트
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Supabase Admin 클라이언트 (런타임에 생성)
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!url || !key) {
+    throw new Error('Supabase 환경 변수가 설정되지 않았습니다')
+  }
+  
+  return createClient(url, key)
+}
 
 export async function POST(request: NextRequest) {
   try {
     console.log('🚀 티어 점수 마이그레이션 시작...')
+    
+    // Supabase 클라이언트 초기화
+    const supabase = getSupabaseAdmin()
     
     // 모든 활성 멤버 조회
     const { data: members, error: fetchError } = await supabase

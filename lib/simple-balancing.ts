@@ -96,6 +96,7 @@ export function generateValidAssignments(
     
     if (availableCandidates.length < 2) {
       console.log(`❌ ${position} 포지션에 충분한 후보 없음 (${availableCandidates.length}/2)`)
+      console.log(`📋 ${position} 포지션 전체 후보:`, candidates[position].map(m => `${m.nickname}(${usedMembers.has(m.id) ? '사용됨' : '사용가능'})`))
       return [] // 할당 실패
     }
     
@@ -171,16 +172,10 @@ export function optimizeTeamSplit(
     const position = positions[positionIndex]
     const positionMembers = positionGroups[position]
     
-    if (positionMembers.length === 1) {
-      // 한 명뿐인 포지션 - team1에 배정
-      team1.push(positionMembers[0])
-      generateTeamSplits(positionIndex + 1, team1, team2)
-      team1.pop()
-      
-      // team2에 배정
-      team2.push(positionMembers[0])
-      generateTeamSplits(positionIndex + 1, team1, team2)
-      team2.pop()
+    if (positionMembers.length < 2) {
+      // 해당 포지션에 2명 미만인 경우 밸런싱 불가능
+      console.log(`❌ ${position} 포지션에 ${positionMembers.length}명만 있어서 팀 분할 불가능`)
+      return
       
     } else if (positionMembers.length === 2) {
       // 두 명인 포지션 - 각 팀에 하나씩
@@ -267,6 +262,13 @@ export function simpleBalancingAlgorithm(members: TeamMember[]): SimpleBalancing
     console.log(`생성된 할당 수: ${assignments.length}개`)
 
     if (assignments.length === 0) {
+      // 각 포지션별 후보 수 분석
+      const allPositions: Position[] = ['top', 'jungle', 'mid', 'adc', 'support']
+      const positionAnalysis = allPositions.map((pos: Position) => {
+        const canPlay = members.filter(member => canMemberPlay(member, pos))
+        return `${pos}: ${canPlay.length}명 (${canPlay.map(m => m.nickname).join(', ')})`
+      }).join('\n')
+      
       return {
         success: false,
         team1: [],
@@ -276,7 +278,7 @@ export function simpleBalancingAlgorithm(members: TeamMember[]): SimpleBalancing
         team1TotalScore: 0,
         team2TotalScore: 0,
         scoreDifference: 0,
-        message: '유효한 포지션 할당을 생성할 수 없습니다.'
+        message: `포지션별 후보 부족으로 밸런싱 불가능:\n${positionAnalysis}\n\n각 포지션에 최소 2명씩 필요합니다.`
       }
     }
 
