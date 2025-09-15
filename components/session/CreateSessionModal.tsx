@@ -15,6 +15,7 @@ import { calculateWinRate, calculateMemberTierScore } from '@/lib/stats'
 import { tierNames, positionNames } from '@/lib/utils'
 import { analyzeTeamFormation, simulateTeamComposition, recommendOptimalPositions, optimizedTeamBalancing, convertToLegacyFormat } from '@/lib/position-analysis'
 import { Users, Crown, Play, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react'
+import PositionCoverageDisplay from '@/components/ui/position-coverage-display'
 
 interface CreateSessionModalProps {
   teamId: string
@@ -555,22 +556,21 @@ export default function CreateSessionModal({ teamId, currentUserId }: CreateSess
                       <span>평균 티어: {balancedTeams.team1MMR}</span>
                     </div>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {balancedTeams.team1.map((member) => {
                       const assignedPosition = balancedTeams.positionAnalysis.team1Assignments[member.id]
                       return (
-                        <div key={member.id} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded-lg">
-                          <div>
-                            <span className="font-medium">{member.nickname}</span>
-                            {assignedPosition && (
-                              <span className="ml-2 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs">
-                                {positionNames[assignedPosition as keyof typeof positionNames]}
-                              </span>
-                            )}
+                        <div key={member.id} className="p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="font-medium text-base">{member.nickname}</span>
+                            <div className="text-sm text-muted-foreground text-right">
+                              <div className="font-mono">{calculateMemberTierScore(member)}</div>
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground text-right">
-                            <div>{calculateMemberTierScore(member)}</div>
-                          </div>
+                          <PositionCoverageDisplay 
+                            member={member} 
+                            assignedPosition={assignedPosition as any}
+                          />
                         </div>
                       )
                     })}
@@ -585,22 +585,21 @@ export default function CreateSessionModal({ teamId, currentUserId }: CreateSess
                       <span>평균 티어: {balancedTeams.team2MMR}</span>
                     </div>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {balancedTeams.team2.map((member) => {
                       const assignedPosition = balancedTeams.positionAnalysis.team2Assignments[member.id]
                       return (
-                        <div key={member.id} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded-lg">
-                          <div>
-                            <span className="font-medium">{member.nickname}</span>
-                            {assignedPosition && (
-                              <span className="ml-2 px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded text-xs">
-                                {positionNames[assignedPosition as keyof typeof positionNames]}
-                              </span>
-                            )}
+                        <div key={member.id} className="p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="font-medium text-base">{member.nickname}</span>
+                            <div className="text-sm text-muted-foreground text-right">
+                              <div className="font-mono">{calculateMemberTierScore(member)}</div>
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground text-right">
-                            <div>{calculateMemberTierScore(member)}</div>
-                          </div>
+                          <PositionCoverageDisplay 
+                            member={member} 
+                            assignedPosition={assignedPosition as any}
+                          />
                         </div>
                       )
                     })}
