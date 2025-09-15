@@ -17,7 +17,6 @@ export enum LogLevel {
 export interface LogContext {
   userId?: string
   teamId?: string
-  sessionId?: string
   action?: string
   component?: string
   duration?: number

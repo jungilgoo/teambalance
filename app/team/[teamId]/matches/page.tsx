@@ -86,7 +86,8 @@ export default function TeamMatchesPage() {
   }, [teamId, router])
 
   const handleEditMatch = (match: Match) => {
-    router.push(`/session/${match.sessionId}/match?edit=true`)
+    // 세션 기반 경기 수정 기능은 비활성화됨 (sessionId 컬럼 제거)
+    alert('경기 수정 기능은 현재 사용할 수 없습니다.')
   }
 
   const handleDeleteMatch = async (matchId: string) => {

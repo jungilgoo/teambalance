@@ -183,7 +183,6 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
 
     try {
       const matchId = await saveMatchResult({
-        sessionId: '', // 세션 없이 저장
         teamId,
         winningTeam: winner!,
         team1: positions.map(position => ({

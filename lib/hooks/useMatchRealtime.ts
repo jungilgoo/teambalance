@@ -31,7 +31,6 @@ export function useMatchRealtime(teamId: string, enabled: boolean = true) {
     onUpdate: (oldMatch, newMatch) => {
       console.log(`[MatchRealtime] 경기 결과 업데이트:`, {
         matchId: newMatch.id,
-        sessionId: (newMatch as any).sessionId,
         result: (newMatch as any).result
       })
     },
@@ -83,7 +82,7 @@ export function useMatchRealtime(teamId: string, enabled: boolean = true) {
    */
   const saveNewMatchResult = useCallback(async (matchResult: any) => {
     try {
-      console.log(`[MatchRealtime] 새 경기 결과 저장 시작:`, matchResult.sessionId)
+      console.log(`[MatchRealtime] 새 경기 결과 저장 시작:`, matchResult.teamId)
       
       // API 호출로 서버에 저장
       const savedMatch = await saveMatchResult(matchResult)
@@ -157,69 +156,5 @@ export function useMatchRealtime(teamId: string, enabled: boolean = true) {
   }
 }
 
-/**
- * 특정 세션의 매치 결과를 실시간으로 추적하는 Hook
- */
-export function useSessionMatchRealtime(sessionId: string, enabled: boolean = true) {
-  const [initialLoading, setInitialLoading] = useState(true)
-  const [match, setMatch] = useState<Match | null>(null)
-
-  // 실시간 구독 설정 (sessions 테이블의 특정 세션만)
-  const {
-    data: realtimeData,
-    loading: realtimeLoading,
-    error: realtimeError,
-    connected,
-    updateData
-  } = useRealtime<Match>({
-    subscriptionId: `session_match_${sessionId}`,
-    table: 'matches',
-    initialData: [],
-    filter: { column: 'session_id', value: sessionId },
-    enabled: !!sessionId && enabled,
-    onInsert: (newMatch) => {
-      console.log(`[SessionMatch] 세션 경기 결과 생성:`, newMatch.id)
-    },
-    onUpdate: (oldMatch, newMatch) => {
-      console.log(`[SessionMatch] 세션 경기 결과 업데이트:`, {
-        matchId: newMatch.id,
-        result: (newMatch as any).result
-      })
-    }
-  })
-
-  /**
-   * 초기 데이터 로드 (생략 - 실시간 구독으로만 처리)
-   */
-  useEffect(() => {
-    setInitialLoading(false)
-  }, [])
-
-  /**
-   * 실시간 데이터를 로컬 상태와 동기화
-   */
-  useEffect(() => {
-    if (realtimeData && realtimeData.length > 0) {
-      const sessionMatch = realtimeData.find(m => (m as any).sessionId === sessionId)
-      setMatch(sessionMatch || null)
-    }
-  }, [realtimeData, sessionId])
-
-  /**
-   * 매치 완료 여부
-   */
-  const isMatchCompleted = useMemo(() => !!match, [match])
-
-  return {
-    // 데이터
-    match,
-    isMatchCompleted,
-
-    // 상태
-    loading: initialLoading || realtimeLoading,
-    error: realtimeError,
-    connected
-  }
-}
 
 export default useMatchRealtime

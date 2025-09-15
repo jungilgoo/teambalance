@@ -463,7 +463,6 @@ export default function MatchResultPage() {
         // 새로 생성 모드: 새로운 매치 생성
         setSavingProgress('🏆 새로운 경기 결과 저장 중...')
         const matchId = await saveMatchResult({
-          sessionId,
           teamId: realtimeSession?.teamId || '',
           winningTeam: winner,
           team1: team1Data.map(member => ({

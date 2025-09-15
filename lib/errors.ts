@@ -48,7 +48,6 @@ export enum ErrorSeverity {
 export interface ErrorContext {
   userId?: string
   teamId?: string
-  sessionId?: string
   action?: string
   component?: string
   timestamp?: Date

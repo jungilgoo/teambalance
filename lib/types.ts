@@ -139,7 +139,6 @@ export interface Session {
 
 export interface Match {
   id: string
-  sessionId: string
   teamId: string
   winner: 'team1' | 'team2'
   team1: { members: MatchMember[] } // team1 멤버 정보 배열
