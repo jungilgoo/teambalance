@@ -43,6 +43,16 @@ export const createSession = async (
       team2_members: team2Members
     }
 
+    // 세션 저장 데이터 검증 로깅
+    console.log('💾 세션 저장 데이터:', {
+      teamId: validatedTeamId,
+      selectedCount: selectedMembers.length,
+      team1Count: team1Members.length,
+      team2Count: team2Members.length,
+      team1Positions: team1Members.map(m => ({ nickname: m.nickname, position: m.position })),
+      team2Positions: team2Members.map(m => ({ nickname: m.nickname, position: m.position }))
+    })
+
 
     const { data: session, error } = await (supabase as any)
       .from('sessions')
