@@ -49,18 +49,6 @@ export function MemberSelect({
   // 현재 선택된 멤버 찾기
   const selectedMember = members.find(member => member.id === value)
 
-  // 휠 이벤트 처리 - 드롭다운 열기
-  const handleWheel = React.useCallback((e: React.WheelEvent) => {
-    if (availableMembers.length === 0 || isMobile) return
-
-    // 드롭다운이 닫혀있을 때만 열기하고 이벤트 차단
-    if (!open) {
-      e.preventDefault()
-      e.stopPropagation()
-      setOpen(true)
-    }
-    // 드롭다운이 열려있을 때는 이벤트를 자연스럽게 전파
-  }, [availableMembers, isMobile, open])
 
   // 모바일에서는 모달 사용, 데스크톱에서는 드롭다운 사용
   if (isMobile) {
@@ -88,8 +76,7 @@ export function MemberSelect({
   }
 
   return (
-    <div onWheel={handleWheel}>
-      <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
@@ -153,6 +140,5 @@ export function MemberSelect({
         </Command>
       </PopoverContent>
     </Popover>
-    </div>
   )
 }
