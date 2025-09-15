@@ -117,7 +117,7 @@ export default function CreateTeamPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* 헤더 */}
       <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-6 py-6 flex items-center space-x-4">
+        <div className="container mx-auto py-3 sm:py-6 flex items-center space-x-2 sm:space-x-4">
           <Button variant="ghost" onClick={() => router.back()} className="rounded-xl -ml-2">
             ← 뒤로가기
           </Button>
@@ -131,7 +131,7 @@ export default function CreateTeamPage() {
       </header>
 
       {/* 메인 컨텐츠 */}
-      <main className="container mx-auto px-6 py-12">
+      <main className="container mx-auto py-6 sm:py-12">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">

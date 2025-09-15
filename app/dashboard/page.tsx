@@ -85,15 +85,15 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* 헤더 */}
       <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-6">
+        <div className="container mx-auto py-3 sm:py-6">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-xl flex items-center justify-center">
                 <Gamepad2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">롤 내전 매니저</h1>
+              <h1 className="mobile-text-title font-bold text-gray-900 dark:text-white">롤 내전 매니저</h1>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <div className="text-right">
                 <p className="text-sm text-gray-500 dark:text-gray-400">안녕하세요</p>
                 <p className="font-semibold text-gray-900 dark:text-white">
@@ -113,36 +113,36 @@ export default function DashboardPage() {
       </header>
 
       {/* 메인 컨텐츠 */}
-      <main className="container mx-auto px-6 py-12">
+      <main className="container mx-auto py-6 sm:py-12">
         <div className="max-w-6xl mx-auto">
           
           {/* 웰컴 섹션 */}
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+          <div className="text-center mb-6 sm:mb-12">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-4">
               내전 관리 대시보드
             </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300">
+            <p className="mobile-text-body text-gray-600 dark:text-gray-300">
               팀을 관리하고 공정한 내전을 시작해보세요
             </p>
           </div>
           
           {/* 내 팀 섹션 */}
           {userTeams.length > 0 && (
-            <div className="mb-12">
-              <div className="flex items-center justify-between mb-8">
+            <div className="mb-6 sm:mb-12">
+              <div className="flex items-center justify-between mb-4 sm:mb-8">
                 <div className="flex items-center space-x-3">
                   <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <h3 className="mobile-text-title font-bold text-gray-900 dark:text-white">
                     내 팀 ({userTeams.length}개)
                   </h3>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 mobile-grid-gap">
                 {userTeams.map(({ team, member }) => (
                   <div 
                     key={team.id}
-                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group hover:scale-[1.02]"
+                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 mobile-card-padding hover:shadow-xl transition-all duration-300 cursor-pointer group hover:scale-[1.02]"
                     onClick={() => router.push(`/team/${team.id}`)}
                   >
                     <div className="flex justify-between items-start mb-4">
@@ -151,7 +151,7 @@ export default function DashboardPage() {
                           <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                          <h4 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
+                          <h4 className="font-bold mobile-text-subtitle text-gray-900 dark:text-white flex items-center gap-2 mobile-truncate-2">
                             {team.name}
                             {team.leaderId === authState.user?.id && (
                               <Crown className="w-5 h-5 text-yellow-500" />
@@ -165,7 +165,7 @@ export default function DashboardPage() {
                       <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
                     </div>
                     
-                    <p className="text-gray-600 dark:text-gray-300 mb-4 leading-relaxed">
+                    <p className="text-gray-600 dark:text-gray-300 mb-4 leading-relaxed mobile-truncate-3">
                       {team.description || '팀 설명이 없습니다'}
                     </p>
                     
@@ -185,8 +185,8 @@ export default function DashboardPage() {
 
           {/* 팀 관리 섹션 */}
           <div>
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <div className="text-center mb-4 sm:mb-8">
+              <h3 className="mobile-text-title font-bold text-gray-900 dark:text-white mb-2">
                 새로운 시작
               </h3>
               <p className="text-gray-600 dark:text-gray-300">
@@ -194,14 +194,14 @@ export default function DashboardPage() {
               </p>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
               {/* 팀 생성 카드 */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-8">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 mobile-card-padding-lg">
                 <div className="text-center mb-6">
                   <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-2xl mb-4">
                     <Plus className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-2">팀 생성</h4>
+                  <h4 className="mobile-text-subtitle font-bold text-gray-900 dark:text-white mb-2">팀 생성</h4>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
                     새로운 내전 팀을 생성하고 리더가 되어<br />멤버들을 초대해보세요
                   </p>
@@ -212,12 +212,12 @@ export default function DashboardPage() {
               </div>
 
               {/* 팀 참가 카드 */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-8">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 mobile-card-padding-lg">
                 <div className="text-center mb-6">
                   <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900 rounded-2xl mb-4">
                     <UserPlus className="w-8 h-8 text-green-600 dark:text-green-400" />
                   </div>
-                  <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-2">팀 참가</h4>
+                  <h4 className="mobile-text-subtitle font-bold text-gray-900 dark:text-white mb-2">팀 참가</h4>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
                     기존 팀을 검색하거나 목록에서<br />선택하여 참가하세요
                   </p>

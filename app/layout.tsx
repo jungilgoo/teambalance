@@ -10,6 +10,12 @@ export const metadata: Metadata = {
   description: 'League of Legends 내전 팀 밸런싱 시스템',
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+}
+
 export default function RootLayout({
   children,
 }: {

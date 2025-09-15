@@ -241,9 +241,9 @@ npx vercel dev
 
 **배포 상태**: ✅ **완전 배포 완료**
 - **메인 도메인**: https://teambalance.vercel.app
-- **최신 배포**: https://teambalance-lxwa3hfq5-jungilgoos-projects.vercel.app
+- **GitHub 저장소**: https://github.com/jungilgoo/teambalance (자동 배포 연결됨)
 - **관리 대시보드**: https://vercel.com/jungilgoos-projects/teambalance
-- **최신 배포 일시**: 2025년 9월 14일 (팀 간 선수 이동 기능 추가)
+- **최신 배포 일시**: 2025년 9월 15일 (닉네임 로그인 수정 + 자동 배포 정상화)
 - **배포 소요 시간**: 3초 (매우 빠른 배포)
 
 ### 배포 과정에서 해결한 주요 이슈들
@@ -308,6 +308,20 @@ npx vercel env ls
 - 비밀번호 찾기 시 이메일 + 생년월일로 본인 확인
 - 사용자 경험 개선된 회원가입 폼 레이아웃
 
+**✅ 닉네임 로그인 시스템 수정 (2025년 9월 15일)**
+- **문제**: 데이터베이스 스키마와 코드 불일치로 닉네임 로그인 일관성 부족
+- **원인**: `profiles` 테이블의 `username` 컬럼에 닉네임 저장 vs `findUserByLoginId` 함수에서 `name` 컬럼 검색
+- **해결**: `lib/api/auth.ts:114`에서 `eq('name')` → `eq('username')` 수정
+- **결과**: 모든 닉네임 로그인이 100% 일관되게 작동
+
+**✅ GitHub ↔ Vercel 자동 배포 시스템 정상화 (2025년 9월 15일)**
+- **문제**: GitHub 계정(`wjddlfrn20-creator`)과 Vercel 연결 계정(`jungilgoo`) 불일치
+- **해결 과정**:
+  1. Git 원격 저장소를 `jungilgoo/teambalance`로 변경
+  2. Personal Access Token으로 인증 설정
+  3. Vercel Settings → Git에서 저장소 연결 설정
+- **결과**: GitHub push → Vercel 자동 배포 정상 작동
+
 **핵심 변경사항 요약:**
 - ✅ 소셜 로그인 관련 코드 완전 제거 및 타입 통일
 - ✅ RLS(Row Level Security) 완전 제거 - 1인 개발자 친화적
@@ -319,13 +333,14 @@ npx vercel env ls
 - ✅ 실제 사용자 테스트 및 피드백 시스템 완료
 
 ### 최신 Git 기록
-**최근 커밋**: `ae7a988` - "fix: 팀 간 선수 이동 시 5명 제한 검증 로직 수정" (2025-09-14 최신)
-- 팀 간 이동 제한 버그 해결: 대상 팀 5명 제한 → 원본 팀 최소 1명 유지 로직으로 수정
-- 5vs5 균형 조정 자유도 향상: 4vs6, 6vs4 등 다양한 팀 구성 허용
+**최근 커밋**: `9a6f495` - "trigger: Vercel 재배포 트리거" (2025-09-15 최신)
+- 닉네임 로그인 불일치 문제 해결 완료
+- GitHub ↔ Vercel 계정 불일치 문제 해결
+- 자동 배포 시스템 정상화
 
 **주요 커밋들**:
+- `d73ad41` - "fix: 닉네임 로그인 불일치 문제 해결" (2025-09-15)
+- `ae7a988` - "fix: 팀 간 선수 이동 시 5명 제한 검증 로직 수정" (2025-09-14)
 - `fc0a160` - "feat: 기존 드래그 시스템 유지하며 팀 간 선수 이동 기능 추가" (2025-09-14)
 - `cc3b667` - "챔피언 목록 수정" (2025-09-14)
 - `dd3289c` - "fix: 다중 UI/UX 개선 및 버그 수정" (2025-09-14)
-- `8224b7d` - "fix: 경기 결과 수정 시 멤버 통계 업데이트 누락 문제 해결" (2025-09-14)
-- `ae9dffe` - "feat: 생년월일 기반 비밀번호 찾기 기능 구현" (2025-09-14)

@@ -268,7 +268,7 @@ export default function TeamDashboard() {
     <div className="min-h-screen bg-background">
       {/* 헤더 */}
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto py-2 sm:py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <Button variant="ghost" onClick={() => router.push('/dashboard')}>
@@ -320,7 +320,7 @@ export default function TeamDashboard() {
       </header>
 
       {/* 메인 컨텐츠 */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto py-4 sm:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* 왼쪽: 빠른 액션 */}
