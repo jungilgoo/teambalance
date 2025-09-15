@@ -1411,3 +1411,195 @@ export const updateMatchResult = async (
     return false
   }
 }
+
+export const updateMatchByMatchId = async (
+  matchId: string,
+  matchData: {
+    winningTeam: 'team1' | 'team2'
+    team1: Array<{
+      memberId: string
+      champion: string
+      position: Position
+      kills: number
+      deaths: number
+      assists: number
+    }>
+    team2: Array<{
+      memberId: string
+      champion: string
+      position: Position
+      kills: number
+      deaths: number
+      assists: number
+    }>
+  }
+): Promise<boolean> => {
+  try {
+    console.log('🔄 매치 ID로 경기 업데이트 시작:', matchId)
+    
+    // 모든 멤버 ID 검증
+    const allMemberIds = [...matchData.team1, ...matchData.team2].map(player => player.memberId)
+    const memberValidation = await validateMemberIds(allMemberIds)
+    
+    if (memberValidation.invalid.length > 0) {
+      console.error('❌ 잘못된 멤버 ID가 발견됨:', memberValidation.invalid)
+      return false
+    }
+    
+    console.log('✅ 모든 멤버 ID 검증 완료:', { validCount: memberValidation.valid.length })
+    
+    // 1. 기존 매치 정보 조회
+    const { data: existingMatch, error: fetchError } = await (supabase as any)
+      .from('matches')
+      .select(`
+        id,
+        winner,
+        mvp_member_id,
+        match_members (
+          team_member_id,
+          team_side,
+          position,
+          champion,
+          kills,
+          deaths,
+          assists
+        )
+      `)
+      .eq('id', matchId)
+      .single()
+
+    if (fetchError || !existingMatch) {
+      console.error('업데이트할 매치를 찾을 수 없습니다:', fetchError)
+      return false
+    }
+
+    console.log('기존 매치 정보:', existingMatch)
+
+    // 2. 기존 통계 롤백 (기존 승패 결과를 되돌림)
+    console.log('🔄 기존 통계 롤백 시작')
+    const oldWinner = existingMatch.winner
+    const rollbackErrors: string[] = []
+
+    // 기존 멤버들의 통계 롤백
+    for (const member of existingMatch.match_members) {
+      const wasWinner = (member.team_side === 'team1' && oldWinner === 'team1') || 
+                       (member.team_side === 'team2' && oldWinner === 'team2')
+      const wasMVP = member.team_member_id === existingMatch.mvp_member_id
+      const result = await rollbackMemberStats(member.team_member_id, member.position, wasWinner, wasMVP)
+      if (!result.success) {
+        rollbackErrors.push(`${member.team_side} ${member.team_member_id}: ${result.error}`)
+      }
+    }
+    
+    if (rollbackErrors.length > 0) {
+      console.error('❌ 기존 통계 롤백 일부 실패:', rollbackErrors)
+      return false // 롤백 실패 시 중단
+    }
+    console.log('✅ 기존 통계 롤백 완료')
+
+    // 3. MVP 계산
+    const matchForMVP = {
+      id: matchId,
+      team1: { members: matchData.team1 },
+      team2: { members: matchData.team2 },
+      winner: matchData.winningTeam,
+      createdAt: new Date()
+    }
+    const mvpMemberId = calculateMatchMVP(matchForMVP as any)
+
+    // 4. 매치 테이블 업데이트 (승리팀과 MVP)
+    const { error: matchUpdateError } = await (supabase as any)
+      .from('matches')
+      .update({
+        winner: matchData.winningTeam,
+        mvp_member_id: mvpMemberId
+      })
+      .eq('id', matchId)
+
+    if (matchUpdateError) {
+      console.error('매치 업데이트 오류:', matchUpdateError)
+      return false
+    }
+
+    // 5. 기존 match_members 삭제
+    const { error: deleteMembersError } = await (supabase as any)
+      .from('match_members')
+      .delete()
+      .eq('match_id', matchId)
+
+    if (deleteMembersError) {
+      console.error('기존 매치 멤버 삭제 오류:', deleteMembersError)
+      return false
+    }
+
+    // 6. 새로운 match_members 생성
+    const allMatchMembers = [
+      ...matchData.team1.map(player => ({
+        match_id: matchId,
+        team_member_id: player.memberId,
+        team_side: 'team1' as const,
+        position: player.position,
+        champion: player.champion,
+        kills: player.kills,
+        deaths: player.deaths,
+        assists: player.assists
+      })),
+      ...matchData.team2.map(player => ({
+        match_id: matchId,
+        team_member_id: player.memberId,
+        team_side: 'team2' as const,
+        position: player.position,
+        champion: player.champion,
+        kills: player.kills,
+        deaths: player.deaths,
+        assists: player.assists
+      }))
+    ]
+
+    const { error: insertMembersError } = await (supabase as any)
+      .from('match_members')
+      .insert(allMatchMembers)
+
+    if (insertMembersError) {
+      console.error('새로운 매치 멤버 생성 오류:', insertMembersError)
+      return false
+    }
+
+    // 7. 새로운 통계 적용
+    console.log('🔄 새로운 통계 적용 시작')
+    const team1Winners = matchData.winningTeam === 'team1'
+    const team2Winners = matchData.winningTeam === 'team2'
+    const statUpdateErrors: string[] = []
+
+    for (const player of matchData.team1) {
+      const isWinner = team1Winners
+      const isMVP = player.memberId === mvpMemberId
+      const result = await updateMemberStats(player.memberId, player.position, isWinner, isMVP)
+      if (!result.success) {
+        statUpdateErrors.push(`Team1 ${player.memberId}: ${result.error}`)
+      }
+    }
+
+    for (const player of matchData.team2) {
+      const isWinner = team2Winners
+      const isMVP = player.memberId === mvpMemberId
+      const result = await updateMemberStats(player.memberId, player.position, isWinner, isMVP)
+      if (!result.success) {
+        statUpdateErrors.push(`Team2 ${player.memberId}: ${result.error}`)
+      }
+    }
+
+    if (statUpdateErrors.length > 0) {
+      console.error('⚠️ 일부 멤버 통계 업데이트 실패:', statUpdateErrors)
+    } else {
+      console.log('✅ 모든 멤버 통계 업데이트 완료')
+    }
+
+    console.log('✅ 매치 ID로 경기 업데이트 완료')
+    return true
+    
+  } catch (error) {
+    console.error('매치 업데이트 중 예외:', error)
+    return false
+  }
+}

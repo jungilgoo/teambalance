@@ -8,6 +8,7 @@ import { getAuthState } from '@/lib/auth'
 import { Match, Team, MatchMember } from '@/lib/types'
 import { getTeamById, getMatchesByTeamId, getMemberNickname, positionNames, deleteMatchResult, getTeamMembers } from '@/lib/supabase-api'
 import { ArrowLeft, Edit, Trophy, Users, Trash2 } from 'lucide-react'
+import EditMatchModal from '@/components/session/EditMatchModal'
 
 export default function TeamMatchesPage() {
   const params = useParams()
@@ -19,6 +20,7 @@ export default function TeamMatchesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [memberNicknames, setMemberNicknames] = useState<Record<string, string>>({})
   const [deletingMatchId, setDeletingMatchId] = useState<string | null>(null)
+  const [editingMatch, setEditingMatch] = useState<Match | null>(null)
 
   useEffect(() => {
     const loadData = async () => {
@@ -86,8 +88,17 @@ export default function TeamMatchesPage() {
   }, [teamId, router])
 
   const handleEditMatch = (match: Match) => {
-    // 세션 기반 경기 수정 기능은 비활성화됨 (sessionId 컬럼 제거)
-    alert('경기 수정 기능은 현재 사용할 수 없습니다.')
+    setEditingMatch(match)
+  }
+
+  const handleEditSuccess = async () => {
+    // 경기 목록을 다시 로드해서 최신 상태로 업데이트
+    try {
+      const matchesData = await getMatchesByTeamId(teamId)
+      setMatches(matchesData)
+    } catch (error) {
+      console.error('경기 목록 새로고침 오류:', error)
+    }
   }
 
   const handleDeleteMatch = async (matchId: string) => {
@@ -296,6 +307,17 @@ export default function TeamMatchesPage() {
           )}
         </div>
       </main>
+
+      {/* 경기 수정 모달 */}
+      {editingMatch && (
+        <EditMatchModal
+          match={editingMatch}
+          teamId={teamId}
+          currentUserId={'dummy'} // TODO: 실제 사용자 ID 전달
+          onClose={() => setEditingMatch(null)}
+          onSuccess={handleEditSuccess}
+        />
+      )}
     </div>
   )
 }

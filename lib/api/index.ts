@@ -41,6 +41,7 @@ export {
   updateSessionResult,
   saveMatchResult,
   updateMatchResult,
+  updateMatchByMatchId,
   getMatchesByTeamId,
   getMatchBySessionId,
   deleteMatchResult,
