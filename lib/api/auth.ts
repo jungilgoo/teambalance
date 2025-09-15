@@ -111,7 +111,7 @@ export const findUserByLoginId = async (loginId: string): Promise<User | null> =
       query = supabase
         .from('profiles')
         .select('*')
-        .eq('name', validatedUsername)
+        .eq('username', validatedUsername)
         .single()
     }
 
