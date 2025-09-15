@@ -17,6 +17,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { MobileMemberSelectModal } from '@/components/ui/mobile-member-select-modal'
+import { useIsMobile } from '@/lib/hooks/useMediaQuery'
 import { TeamMember } from '@/lib/types'
 
 interface MemberSelectProps {
@@ -37,25 +39,7 @@ export function MemberSelect({
   excludeMembers = []
 }: MemberSelectProps) {
   const [open, setOpen] = React.useState(false)
-
-  // 모바일에서 드롭다운 열릴 때 body 스크롤 방지
-  React.useEffect(() => {
-    if (open && typeof window !== 'undefined') {
-      const isMobile = window.innerWidth <= 768
-      if (isMobile) {
-        document.body.style.overflow = 'hidden'
-        document.body.style.touchAction = 'none'
-      }
-    } else {
-      document.body.style.overflow = ''
-      document.body.style.touchAction = ''
-    }
-
-    return () => {
-      document.body.style.overflow = ''
-      document.body.style.touchAction = ''
-    }
-  }, [open])
+  const isMobile = useIsMobile()
 
   // 선택 가능한 멤버들 (제외 목록 필터링)
   const availableMembers = members.filter(member =>
@@ -64,6 +48,31 @@ export function MemberSelect({
 
   // 현재 선택된 멤버 찾기
   const selectedMember = members.find(member => member.id === value)
+
+  // 모바일에서는 모달 사용, 데스크톱에서는 드롭다운 사용
+  if (isMobile) {
+    return (
+      <>
+        <Button
+          variant="outline"
+          className={cn("justify-between", className)}
+          onClick={() => setOpen(true)}
+        >
+          {selectedMember ? selectedMember.nickname : placeholder}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+        <MobileMemberSelectModal
+          open={open}
+          onOpenChange={setOpen}
+          value={value}
+          onValueChange={onValueChange}
+          members={members}
+          excludeMembers={excludeMembers}
+          placeholder={placeholder}
+        />
+      </>
+    )
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -78,25 +87,11 @@ export function MemberSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent
-        className="p-0"
-        align="start"
-        style={{
-          touchAction: 'manipulation',
-          WebkitOverflowScrolling: 'touch'
-        }}
-      >
+      <PopoverContent className="p-0" align="start">
         <Command>
           <CommandInput placeholder="멤버 검색..." />
           <CommandEmpty>멤버를 찾을 수 없습니다.</CommandEmpty>
-          <CommandList
-            style={{
-              maxHeight: '200px',
-              overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              touchAction: 'pan-y'
-            }}
-          >
+          <CommandList>
             <CommandGroup>
             {availableMembers.map((member) => (
               <CommandItem

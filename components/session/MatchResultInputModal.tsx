@@ -11,6 +11,7 @@ import { NumberWheel } from '@/components/ui/number-wheel'
 import { TeamMember } from '@/lib/types'
 import { getTeamMembers, saveMatchResult } from '@/lib/supabase-api'
 import { useTeamMembersRealtime } from '@/lib/hooks/useTeamMembersRealtime'
+import { useIsMobile } from '@/lib/hooks/useMediaQuery'
 import { positionNames } from '@/lib/utils'
 import { Trophy, Users, Save, RotateCcw, ArrowLeftRight } from 'lucide-react'
 
@@ -75,6 +76,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
   })
   const [isSaving, setIsSaving] = useState(false)
   const [savingProgress, setSavingProgress] = useState('')
+  const isMobile = useIsMobile()
 
   // 실시간 팀 멤버 관리
   const {
@@ -234,6 +236,78 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
     const positionData = teamData[team][position]
     const availableMembers = getAvailableMembers(team, position)
 
+    if (isMobile) {
+      // 모바일: 세로 레이아웃으로 변경
+      return (
+        <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border space-y-3">
+          {/* 포지션 헤더 */}
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <span className="text-lg">{positionIcons[position]}</span>
+            <span className="font-semibold text-base">{positionNames[position]}</span>
+          </div>
+
+          {/* 멤버 & 챔피언 선택 */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">멤버</label>
+              <MemberSelect
+                value={positionData.memberId}
+                onValueChange={(value) => updateTeamData(team, position, 'memberId', value)}
+                placeholder="멤버 선택"
+                members={teamMembers}
+                excludeMembers={getSelectedMemberIds(team, position)}
+                className="h-10"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">챔피언</label>
+              <ChampionSelect
+                value={positionData.champion}
+                onValueChange={(value) => updateTeamData(team, position, 'champion', value)}
+                placeholder="챔피언 선택"
+                className="h-10"
+              />
+            </div>
+          </div>
+
+          {/* KDA 입력 */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">킬</label>
+              <NumberWheel
+                value={positionData.kills}
+                onChange={(value) => updateTeamData(team, position, 'kills', value)}
+                placeholder="K"
+                min={0}
+                max={30}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">데스</label>
+              <NumberWheel
+                value={positionData.deaths}
+                onChange={(value) => updateTeamData(team, position, 'deaths', value)}
+                placeholder="D"
+                min={0}
+                max={30}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">어시</label>
+              <NumberWheel
+                value={positionData.assists}
+                onChange={(value) => updateTeamData(team, position, 'assists', value)}
+                placeholder="A"
+                min={0}
+                max={30}
+              />
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // 데스크톱: 기존 그리드 레이아웃 유지
     return (
       <div className="grid grid-cols-6 gap-2 items-center p-3 bg-white dark:bg-gray-800 rounded-lg border">
         <div className="flex items-center gap-1 text-sm font-medium">
@@ -291,7 +365,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           경기 결과 입력하기
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className={`${isMobile ? 'max-w-full mx-2 max-h-[95vh]' : 'max-w-6xl max-h-[90vh]'} overflow-y-auto`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Trophy className="w-6 h-6 text-yellow-500" />
@@ -304,11 +378,11 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
 
         <div className="space-y-6">
           {/* 승리 팀 선택 */}
-          <div className="flex gap-4 justify-center">
+          <div className={`flex gap-4 justify-center ${isMobile ? 'flex-col' : ''}`}>
             <Button
               variant={winner === 'team1' ? 'default' : 'outline'}
               onClick={() => setWinner('team1')}
-              className="px-8 h-10"
+              className={`${isMobile ? 'h-12 text-base' : 'px-8 h-10'}`}
               style={{
                 backgroundColor: winner === 'team1' ? '#3b82f6' : undefined,
                 color: winner === 'team1' ? 'white' : undefined
@@ -319,7 +393,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
             <Button
               variant={winner === 'team2' ? 'default' : 'outline'}
               onClick={() => setWinner('team2')}
-              className="px-8 h-10"
+              className={`${isMobile ? 'h-12 text-base' : 'px-8 h-10'}`}
               style={{
                 backgroundColor: winner === 'team2' ? '#ef4444' : undefined,
                 color: winner === 'team2' ? 'white' : undefined
@@ -332,7 +406,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           <Separator />
 
           {/* 팀별 입력 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2'}`}>
 
             {/* 블루팀 */}
             <Card className="border-blue-200 dark:border-blue-800">
@@ -342,7 +416,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
                   블루팀
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 space-y-3">
+              <CardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-4 space-y-3'}`}>
                 {positions.map(position => (
                   <PositionInput key={position} team="team1" position={position} />
                 ))}
@@ -357,7 +431,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
                   레드팀
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 space-y-3">
+              <CardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-4 space-y-3'}`}>
                 {positions.map(position => (
                   <PositionInput key={position} team="team2" position={position} />
                 ))}
@@ -366,11 +440,11 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           </div>
 
           {/* 버튼들 */}
-          <div className="flex flex-wrap gap-2 justify-center">
+          <div className={`flex gap-2 justify-center ${isMobile ? 'flex-col' : 'flex-wrap'}`}>
             <Button
               variant="outline"
               onClick={handleTeamSwap}
-              className="flex items-center gap-2"
+              className={`flex items-center gap-2 ${isMobile ? 'h-12 text-base justify-center' : ''}`}
             >
               <ArrowLeftRight className="w-4 h-4" />
               팀 교체
@@ -379,7 +453,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
             <Button
               variant="outline"
               onClick={resetGameData}
-              className="flex items-center gap-2"
+              className={`flex items-center gap-2 ${isMobile ? 'h-12 text-base justify-center' : ''}`}
             >
               <RotateCcw className="w-4 h-4" />
               챔피언/KDA 초기화
@@ -388,7 +462,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
             <Button
               onClick={() => handleSaveResult(false)}
               disabled={isSaving || !isInputComplete()}
-              className="flex items-center gap-2"
+              className={`flex items-center gap-2 ${isMobile ? 'h-12 text-base justify-center' : ''}`}
             >
               {isSaving ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -401,7 +475,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
             <Button
               onClick={() => handleSaveResult(true)}
               disabled={isSaving || !isInputComplete()}
-              className="flex items-center gap-2"
+              className={`flex items-center gap-2 ${isMobile ? 'h-12 text-base justify-center' : ''}`}
             >
               {isSaving ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

@@ -17,6 +17,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { MobileChampionSelectModal } from '@/components/ui/mobile-champion-select-modal'
+import { useIsMobile } from '@/lib/hooks/useMediaQuery'
 import { champions, searchChampions } from '@/lib/champions'
 
 interface ChampionSelectProps {
@@ -33,25 +35,30 @@ export function ChampionSelect({
   className
 }: ChampionSelectProps) {
   const [open, setOpen] = React.useState(false)
+  const isMobile = useIsMobile()
 
-  // 모바일에서 드롭다운 열릴 때 body 스크롤 방지
-  React.useEffect(() => {
-    if (open && typeof window !== 'undefined') {
-      const isMobile = window.innerWidth <= 768
-      if (isMobile) {
-        document.body.style.overflow = 'hidden'
-        document.body.style.touchAction = 'none'
-      }
-    } else {
-      document.body.style.overflow = ''
-      document.body.style.touchAction = ''
-    }
-
-    return () => {
-      document.body.style.overflow = ''
-      document.body.style.touchAction = ''
-    }
-  }, [open])
+  // 모바일에서는 모달 사용, 데스크톱에서는 드롭다운 사용
+  if (isMobile) {
+    return (
+      <>
+        <Button
+          variant="outline"
+          className={cn("justify-between", className)}
+          onClick={() => setOpen(true)}
+        >
+          {value || placeholder}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+        <MobileChampionSelectModal
+          open={open}
+          onOpenChange={setOpen}
+          value={value}
+          onValueChange={onValueChange}
+          placeholder={placeholder}
+        />
+      </>
+    )
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -66,32 +73,18 @@ export function ChampionSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent
-        className="p-0"
-        align="start"
-        style={{
-          touchAction: 'manipulation',
-          WebkitOverflowScrolling: 'touch'
-        }}
-      >
+      <PopoverContent className="p-0" align="start">
         <Command>
           <CommandInput placeholder="챔피언 검색..." />
           <CommandEmpty>챔피언을 찾을 수 없습니다.</CommandEmpty>
-          <CommandList
-            style={{
-              maxHeight: '200px',
-              overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              touchAction: 'pan-y'
-            }}
-          >
+          <CommandList>
             <CommandGroup>
             {champions.map((champion) => (
               <CommandItem
                 key={champion}
                 value={champion}
                 onSelect={(currentValue) => {
-                  const selectedChampion = champions.find(c => 
+                  const selectedChampion = champions.find(c =>
                     c.toLowerCase() === currentValue.toLowerCase()
                   ) || currentValue
                   onValueChange?.(selectedChampion === value ? '' : selectedChampion)
