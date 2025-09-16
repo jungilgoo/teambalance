@@ -10,7 +10,7 @@ import { Team, TeamMember } from '@/lib/types'
 import { getTeamById, getTeamMembers, getUserById, updateMemberTier, updateMemberPositions, getTopRankings, getTeamMVPRanking, getCurrentStreaks, getPendingJoinRequests } from '@/lib/supabase-api'
 import { calculateWinRate } from '@/lib/stats'
 import { positionNames } from '@/lib/utils'
-import { Users, Crown, Plus, Play, BarChart3, Settings, History, Trophy, Wifi, WifiOff } from 'lucide-react'
+import { Users, Crown, Plus, Play, BarChart3, Settings, History, Trophy, Wifi, WifiOff, User } from 'lucide-react'
 import { useTeamMembersRealtime } from '@/lib/hooks/useTeamMembersRealtime'
 import { usePendingRequestsCount } from '@/lib/hooks/usePendingRequestsRealtime'
 import TeamBalanceModal from '@/components/session/TeamBalanceModal'
@@ -168,6 +168,10 @@ export default function TeamDashboard() {
   const handleViewStats = () => {
     // TODO: 통계 페이지로 이동
     router.push(`/team/${teamId}/stats`)
+  }
+
+  const handleViewPersonalStats = () => {
+    router.push(`/team/${teamId}/personal-stats`)
   }
 
   const handleViewMatches = () => {
@@ -344,18 +348,27 @@ export default function TeamDashboard() {
                   currentUserId={authState.user?.id || ''}
                 />
                 
-                <Button 
+                <Button
                   onClick={handleViewStats}
-                  variant="outline" 
+                  variant="outline"
                   className="w-full"
                 >
                   <BarChart3 className="w-4 h-4 mr-2" />
                   팀 통계 보기
                 </Button>
 
-                <Button 
+                <Button
+                  onClick={handleViewPersonalStats}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <User className="w-4 h-4 mr-2" />
+                  개인 통계 보기
+                </Button>
+
+                <Button
                   onClick={handleViewMatches}
-                  variant="outline" 
+                  variant="outline"
                   className="w-full"
                 >
                   <History className="w-4 h-4 mr-2" />
