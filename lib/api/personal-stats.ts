@@ -233,27 +233,33 @@ export const getUserPersonalStats = async (
 
     const memberData = teamMember as any
 
-    // 매치 기록으로부터 평균 KDA 계산
+    // 매치 기록으로부터 평균 KDA 계산 (총합 방식)
     const matchHistory = await getUserMatchHistory(teamId, userId)
-    let totalKDA = 0
-    let validKDACount = 0
+    let totalKills = 0
+    let totalDeaths = 0
+    let totalAssists = 0
 
     matchHistory.forEach(record => {
-      const kda = (record.kills + record.assists) / Math.max(record.deaths, 1)
-      if (!isNaN(kda) && isFinite(kda)) {
-        totalKDA += kda
-        validKDACount++
-      }
+      totalKills += record.kills
+      totalDeaths += record.deaths
+      totalAssists += record.assists
     })
 
-    const averageKDA = validKDACount > 0 ? Math.round((totalKDA / validKDACount) * 100) / 100 : 0
+    const averageKDA = matchHistory.length > 0 
+      ? Math.round(((totalKills + totalAssists) / Math.max(totalDeaths, 1)) * 100) / 100 
+      : 0
 
-    // MVP 횟수 계산
+    // MVP 횟수 계산 - NULL이 아닌 경우만 카운트
     const { data: mvpMatches, error: mvpError } = await supabase
       .from('matches')
-      .select('id')
+      .select('id, mvp_member_id')
       .eq('team_id', teamId)
       .eq('mvp_member_id', memberData.id)
+      .not('mvp_member_id', 'is', null)
+
+    if (mvpError) {
+      console.error('MVP 매치 조회 오류:', mvpError)
+    }
 
     const mvpCount = mvpError ? 0 : (mvpMatches?.length || 0)
 
@@ -276,8 +282,8 @@ export const getUserPersonalStats = async (
 
         // 사용자 매치 기록을 최신순으로 정렬
         const sortedMatchHistory = [...matchHistory].sort((a, b) => {
-          const matchA = matches.find((m: any) => m.id === a.matchId)
-          const matchB = matches.find((m: any) => m.id === b.matchId)
+          const matchA = (matches as any[]).find((m: any) => m.id === a.matchId)
+          const matchB = (matches as any[]).find((m: any) => m.id === b.matchId)
           if (!matchA || !matchB) return 0
           return new Date(matchB.created_at).getTime() - new Date(matchA.created_at).getTime()
         })
