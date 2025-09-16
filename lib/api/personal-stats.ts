@@ -231,6 +231,8 @@ export const getUserPersonalStats = async (
       return null
     }
 
+    const memberData = teamMember as any
+
     // 매치 기록으로부터 평균 KDA 계산
     const matchHistory = await getUserMatchHistory(teamId, userId)
     let totalKDA = 0
@@ -246,7 +248,66 @@ export const getUserPersonalStats = async (
 
     const averageKDA = validKDACount > 0 ? Math.round((totalKDA / validKDACount) * 100) / 100 : 0
 
-    const memberData = teamMember as any
+    // MVP 횟수 계산
+    const { data: mvpMatches, error: mvpError } = await supabase
+      .from('matches')
+      .select('id')
+      .eq('team_id', teamId)
+      .eq('mvp_member_id', memberData.id)
+
+    const mvpCount = mvpError ? 0 : (mvpMatches?.length || 0)
+
+    // 연속 기록 계산 (최근 경기부터 역순으로)
+    let currentStreak = 0
+    if (matchHistory.length > 0) {
+      // 승패 정보를 위해 매치 데이터 조회
+      const { data: matches, error: matchError } = await supabase
+        .from('matches')
+        .select('id, winner, created_at')
+        .eq('team_id', teamId)
+        .order('created_at', { ascending: false })
+
+      if (!matchError && matches) {
+        // 매치 ID별 승패 정보 매핑
+        const matchResults = new Map<string, string>()
+        matches.forEach((match: any) => {
+          matchResults.set(match.id, match.winner)
+        })
+
+        // 사용자 매치 기록을 최신순으로 정렬
+        const sortedMatchHistory = [...matchHistory].sort((a, b) => {
+          const matchA = matches.find((m: any) => m.id === a.matchId)
+          const matchB = matches.find((m: any) => m.id === b.matchId)
+          if (!matchA || !matchB) return 0
+          return new Date(matchB.created_at).getTime() - new Date(matchA.created_at).getTime()
+        })
+
+        // 연속 기록 계산
+        let lastResult: boolean | null = null
+        for (const record of sortedMatchHistory) {
+          const matchWinner = matchResults.get(record.matchId || '')
+          if (!matchWinner) continue
+
+          const isWin = record.teamSide === matchWinner
+
+          if (lastResult === null) {
+            // 첫 번째 경기
+            lastResult = isWin
+            currentStreak = isWin ? 1 : -1
+          } else if (lastResult === isWin) {
+            // 같은 결과가 계속됨
+            if (isWin) {
+              currentStreak++
+            } else {
+              currentStreak--
+            }
+          } else {
+            // 연속 기록이 끊어짐
+            break
+          }
+        }
+      }
+    }
 
     return {
       totalGames: memberData.total_wins + memberData.total_losses,
@@ -257,8 +318,8 @@ export const getUserPersonalStats = async (
         : 0,
       averageKDA,
       tierScore: memberData.tier_score,
-      mvpCount: 0, // team_members 테이블에는 mvp_count 필드가 없음
-      currentStreak: 0, // team_members 테이블에는 current_streak 필드가 없음
+      mvpCount,
+      currentStreak,
       mainPositionGames: memberData.main_position_games,
       mainPositionWins: memberData.main_position_wins,
       subPositionGames: memberData.sub_position_games,
