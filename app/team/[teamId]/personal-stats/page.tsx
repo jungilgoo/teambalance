@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getAuthState } from '@/lib/auth'
-import { Team, User } from '@/lib/types'
+import { Team, User, TeamMember } from '@/lib/types'
 import { getTeamById, getTeamMembers, positionNames } from '@/lib/supabase-api'
 import {
   Table,
@@ -43,7 +44,41 @@ export default function PersonalStatsPage() {
   const [personalStats, setPersonalStats] = useState<PersonalStats | null>(null)
   const [championStats, setChampionStats] = useState<ChampionStats[]>([])
   const [positionChampionStats, setPositionChampionStats] = useState<PositionChampionStats[]>([])
-  const [userNickname, setUserNickname] = useState<string>('')
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('')
+  const [selectedMemberNickname, setSelectedMemberNickname] = useState<string>('')
+
+  // 선택된 멤버의 통계 데이터를 로드하는 함수
+  const loadMemberStats = useCallback(async (memberId: string) => {
+    try {
+      const [personalStatsData, championStatsData, positionStatsData] = await Promise.all([
+        getUserPersonalStats(teamId, memberId),
+        getUserChampionStats(teamId, memberId),
+        getUserPositionChampionStats(teamId, memberId)
+      ])
+
+      setPersonalStats(personalStatsData)
+      setChampionStats(championStatsData)
+      setPositionChampionStats(positionStatsData)
+    } catch (error) {
+      console.error('멤버 통계 로드 오류:', error)
+    }
+  }, [teamId])
+
+  // 멤버 변경 핸들러
+  const handleMemberChange = async (memberId: string) => {
+    setIsLoading(true)
+
+    const selectedMember = teamMembers.find(member => member.userId === memberId)
+    if (selectedMember) {
+      setSelectedMemberId(memberId)
+      setSelectedMemberNickname(selectedMember.nickname)
+
+      await loadMemberStats(memberId)
+    }
+
+    setIsLoading(false)
+  }
 
   useEffect(() => {
     const loadData = async () => {
@@ -78,18 +113,17 @@ export default function PersonalStatsPage() {
         }
 
         setTeam(teamData)
-        setUserNickname(currentMember?.nickname || authState.user?.username || authState.user?.name || '')
+        setTeamMembers(teamMembers)
 
-        // 개인 통계 데이터 로드
-        const [personalStatsData, championStatsData, positionStatsData] = await Promise.all([
-          getUserPersonalStats(teamId, authState.user!.id),
-          getUserChampionStats(teamId, authState.user!.id),
-          getUserPositionChampionStats(teamId, authState.user!.id)
-        ])
+        // 기본 선택된 멤버를 현재 사용자로 설정
+        const defaultMemberId = authState.user!.id
+        const defaultMemberNickname = currentMember?.nickname || authState.user?.username || authState.user?.name || ''
 
-        setPersonalStats(personalStatsData)
-        setChampionStats(championStatsData)
-        setPositionChampionStats(positionStatsData)
+        setSelectedMemberId(defaultMemberId)
+        setSelectedMemberNickname(defaultMemberNickname)
+
+        // 선택된 멤버(현재 사용자)의 개인 통계 데이터 로드
+        await loadMemberStats(defaultMemberId)
 
         setIsLoading(false)
       } catch (error) {
@@ -99,7 +133,7 @@ export default function PersonalStatsPage() {
     }
 
     loadData()
-  }, [teamId, router])
+  }, [teamId, router, loadMemberStats])
 
   if (isLoading) {
     return (
@@ -138,11 +172,32 @@ export default function PersonalStatsPage() {
               <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <UserIcon className="w-6 h-6 text-blue-500" />
-                  {userNickname}님의 개인 통계
+                  {selectedMemberNickname}님의 개인 통계
                 </h1>
                 <p className="text-sm text-muted-foreground">
                   {team.name} 팀에서의 개인 성과
                 </p>
+              </div>
+            </div>
+
+            {/* 멤버 선택 드롭다운 */}
+            <div className="flex items-center space-x-4">
+              <div className="flex flex-col items-end">
+                <label className="text-sm text-muted-foreground mb-1">멤버 선택</label>
+                <Select value={selectedMemberId} onValueChange={handleMemberChange}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="멤버를 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamMembers
+                      .filter(member => member.status === 'active')
+                      .map(member => (
+                        <SelectItem key={member.userId} value={member.userId}>
+                          {member.nickname} {member.userId === currentUser?.id ? '(나)' : ''}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
