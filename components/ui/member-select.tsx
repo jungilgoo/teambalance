@@ -56,10 +56,12 @@ export function MemberSelect({
       <>
         <Button
           variant="outline"
-          className={cn("justify-between", className)}
+          className={cn("justify-between w-full", className)}
           onClick={() => setOpen(true)}
         >
-          {selectedMember ? selectedMember.nickname : placeholder}
+          <span className="truncate">
+            {selectedMember ? selectedMember.nickname : placeholder}
+          </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
         <MobileMemberSelectModal
@@ -82,9 +84,11 @@ export function MemberSelect({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className={cn("justify-between", className)}
+            className={cn("justify-between w-full", className)}
           >
-            {selectedMember ? selectedMember.nickname : placeholder}
+            <span className="truncate">
+              {selectedMember ? selectedMember.nickname : placeholder}
+            </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -127,9 +131,9 @@ export function MemberSelect({
                     value === member.id ? "opacity-100" : "opacity-0"
                   )}
                 />
-                <div className="flex flex-col">
-                  <span className="font-medium">{member.nickname}</span>
-                  <span className="text-xs text-muted-foreground">
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="font-medium truncate">{member.nickname}</span>
+                  <span className="text-xs text-muted-foreground truncate">
                     {member.tier} • {member.mainPosition}
                   </span>
                 </div>

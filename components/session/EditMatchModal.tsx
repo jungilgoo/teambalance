@@ -275,7 +275,7 @@ export default function EditMatchModal({
                   className="flex-1 max-w-[200px] h-12"
                 >
                   <Users className="w-4 h-4 mr-2" />
-                  Team 1 승리
+                  블루팀 승리
                 </Button>
                 <Button
                   variant={winner === 'team2' ? 'default' : 'outline'}
@@ -283,7 +283,7 @@ export default function EditMatchModal({
                   className="flex-1 max-w-[200px] h-12"
                 >
                   <Users className="w-4 h-4 mr-2" />
-                  Team 2 승리
+                  레드팀 승리
                 </Button>
               </div>
             </CardContent>
@@ -297,7 +297,7 @@ export default function EditMatchModal({
                   <CardTitle className="flex items-center justify-between">
                     <span className="flex items-center gap-2">
                       <Users className="w-4 h-4" />
-                      {team === 'team1' ? 'Team 1' : 'Team 2'}
+                      {team === 'team1' ? '블루팀' : '레드팀'}
                     </span>
                     {winner === team && <span className="text-sm text-primary">승리팀</span>}
                   </CardTitle>
