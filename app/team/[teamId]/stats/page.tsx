@@ -9,6 +9,7 @@ import { Team, TeamMember, User } from '@/lib/types'
 import { getTeamById, getTeamMembers, getUserById, positionNames } from '@/lib/supabase-api'
 import { getMemberMVPCount } from '@/lib/api/sessions'
 import { calculateMemberRankings, MemberRanking } from '@/lib/stats'
+import { getTeamMembersStats, MemberStatsForTeam } from '@/lib/api/personal-stats'
 import { TierBadge } from '@/components/ui/tier-badge'
 import { 
   Table,
@@ -36,6 +37,7 @@ export default function TeamStatsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [memberRankings, setMemberRankings] = useState<MemberRanking[]>([])
   const [membersWithUsers, setMembersWithUsers] = useState<Array<MemberRanking & { user: User | null, mvpCount: number }>>([])
+  const [memberStats, setMemberStats] = useState<MemberStatsForTeam[]>([])
 
   useEffect(() => {
     const loadData = async () => {
@@ -85,6 +87,10 @@ export default function TeamStatsPage() {
           })
         )
         setMembersWithUsers(rankingsWithUsers)
+        
+        // 멤버별 KDA와 주력 챔피언 통계 로드
+        const memberStatsData = await getTeamMembersStats(teamId)
+        setMemberStats(memberStatsData)
         
         setIsLoading(false)
       } catch (error) {
@@ -170,6 +176,8 @@ export default function TeamStatsPage() {
                     <TableHead className="text-right">티어 점수</TableHead>
                     <TableHead className="text-right">승률</TableHead>
                     <TableHead className="text-right">경기수</TableHead>
+                    <TableHead className="text-right">평균 KDA</TableHead>
+                    <TableHead>주력 챔피언</TableHead>
                     <TableHead className="text-right">MVP</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -177,6 +185,9 @@ export default function TeamStatsPage() {
                   {membersWithUsers
                     .sort((a, b) => b.winRate - a.winRate)
                     .map((member, index) => {
+                      // 해당 멤버의 KDA와 주력 챔피언 정보 찾기
+                      const memberKDAStats = memberStats.find(stat => stat.memberId === member.id)
+                      
                       return (
                         <TableRow key={member.id}>
                           <TableCell className="font-medium">
@@ -219,6 +230,24 @@ export default function TeamStatsPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             {member.totalGames}경기
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className={memberKDAStats && memberKDAStats.averageKDA >= 2 ? 'text-blue-600 font-semibold' : 
+                                            memberKDAStats && memberKDAStats.averageKDA >= 1.5 ? 'text-green-600' : 'text-gray-600'}>
+                              {memberKDAStats ? memberKDAStats.averageKDA : '-'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              <div className="font-medium">
+                                {memberKDAStats?.topChampion || '-'}
+                              </div>
+                              {memberKDAStats?.championPlayCount && (
+                                <div className="text-muted-foreground text-xs">
+                                  {memberKDAStats.championPlayCount}경기
+                                </div>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <span className={member.mvpCount > 0 ? 'text-yellow-600 font-semibold' : 'text-gray-500'}>

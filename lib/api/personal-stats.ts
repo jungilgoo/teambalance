@@ -340,6 +340,89 @@ export const getUserPersonalStats = async (
 /**
  * 포지션별 주력 챔피언 정보를 조회합니다
  */
+/**
+ * 팀 통계용 - 모든 멤버의 KDA와 주력 챔피언 정보를 조회합니다
+ */
+export interface MemberStatsForTeam {
+  memberId: string
+  userId: string
+  nickname: string
+  averageKDA: number
+  topChampion: string | null
+  championPlayCount: number
+}
+
+export const getTeamMembersStats = async (
+  teamId: string
+): Promise<MemberStatsForTeam[]> => {
+  try {
+    if (!validateUUID(teamId)) {
+      console.error('잘못된 팀 ID 형식:', teamId)
+      return []
+    }
+
+    // 팀 멤버 목록 조회
+    const { data: teamMembers, error: memberError } = await supabase
+      .from('team_members')
+      .select('id, user_id, nickname')
+      .eq('team_id', teamId)
+      .eq('status', 'active')
+
+    if (memberError || !teamMembers) {
+      console.error('팀 멤버 조회 오류:', memberError)
+      return []
+    }
+
+    // 각 멤버별 통계 계산
+    const memberStats: MemberStatsForTeam[] = await Promise.all(
+      teamMembers.map(async (member: any) => {
+        const matchHistory = await getUserMatchHistory(teamId, member.user_id)
+        
+        // KDA 계산 (총합 방식)
+        let totalKills = 0
+        let totalDeaths = 0
+        let totalAssists = 0
+
+        matchHistory.forEach(record => {
+          totalKills += record.kills
+          totalDeaths += record.deaths
+          totalAssists += record.assists
+        })
+
+        const averageKDA = matchHistory.length > 0 
+          ? Math.round(((totalKills + totalAssists) / Math.max(totalDeaths, 1)) * 100) / 100 
+          : 0
+
+        // 가장 많이 사용한 챔피언 계산
+        const championCounts: Record<string, number> = {}
+        matchHistory.forEach(record => {
+          championCounts[record.champion] = (championCounts[record.champion] || 0) + 1
+        })
+
+        const sortedChampions = Object.entries(championCounts)
+          .sort(([, a], [, b]) => b - a)
+
+        const topChampion = sortedChampions.length > 0 ? sortedChampions[0][0] : null
+        const championPlayCount = sortedChampions.length > 0 ? sortedChampions[0][1] : 0
+
+        return {
+          memberId: member.id,
+          userId: member.user_id,
+          nickname: member.nickname,
+          averageKDA,
+          topChampion,
+          championPlayCount
+        }
+      })
+    )
+
+    return memberStats
+  } catch (error) {
+    console.error('팀 멤버 통계 조회 실패:', error)
+    return []
+  }
+}
+
 export const getUserPositionChampionStats = async (
   teamId: string,
   userId: string
