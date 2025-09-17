@@ -405,7 +405,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           <Separator />
 
           {/* 팀별 입력 */}
-          <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2'}`}>
+          <div className="grid grid-cols-1 gap-6">
 
             {/* 블루팀 */}
             <Card className="border-blue-200 dark:border-blue-800">
