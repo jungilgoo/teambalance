@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Check, ChevronsUpDown } from 'lucide-react'
+import { Check, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -48,7 +48,7 @@ export function ChampionSelect({
           onClick={() => setOpen(true)}
         >
           {value || placeholder}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
         <MobileChampionSelectModal
           open={open}
@@ -71,7 +71,7 @@ export function ChampionSelect({
             className={cn("justify-between", className)}
           >
             {value || placeholder}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
       <PopoverContent

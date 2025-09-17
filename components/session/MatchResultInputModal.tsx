@@ -320,14 +320,14 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           placeholder="멤버"
           members={teamMembers}
           excludeMembers={getSelectedMemberIds(team, position)}
-          className="h-8 text-xs"
+          className="h-10 text-sm"
         />
 
         <ChampionSelect
           value={positionData.champion}
           onValueChange={(value) => updateTeamData(team, position, 'champion', value)}
           placeholder="챔피언"
-          className="h-8 text-xs"
+          className="h-10 text-sm"
         />
 
         <NumberWheel

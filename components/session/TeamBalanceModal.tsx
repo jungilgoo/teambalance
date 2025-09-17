@@ -292,7 +292,7 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
               <Users className="w-5 h-5" />
               참가 멤버 선택 ({selectedMembers.length}명)
             </h3>
-            <div className="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-80 overflow-y-auto">
               {membersWithUser.map((member) => {
                 const isSelected = selectedMembers.includes(member.id)
                 return (
