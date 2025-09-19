@@ -15,7 +15,9 @@ import {
   Heart,
   Users,
   Crosshair,
-  Search
+  Search,
+  Flame,
+  Trees
 } from 'lucide-react'
 
 interface MemberCardProps {
@@ -32,9 +34,9 @@ interface MemberCardProps {
 // 포지션별 아이콘 매핑
 const positionIcons = {
   top: Swords,
-  jungle: Search,
+  jungle: Trees,
   mid: Zap,
-  adc: Crosshair,
+  adc: Flame,
   support: Heart
 }
 
@@ -188,17 +190,44 @@ export function MemberCard({
           </div>
         </div>
 
-        {/* 전적 정보 */}
-        <div className="flex items-center justify-between text-sm text-gray-600 bg-white/50 rounded-lg p-2">
-          <span>{member.stats.totalWins}승 {member.stats.totalLosses}패</span>
-          {member.stats.currentStreak !== 0 && (
-            <span className={cn(
-              "font-medium",
-              member.stats.currentStreak > 0 ? "text-green-600" : "text-red-500"
-            )}>
-              {member.stats.currentStreak > 0 ? `${member.stats.currentStreak}연승` : `${Math.abs(member.stats.currentStreak)}연패`}
-            </span>
-          )}
+        {/* 상세 정보 */}
+        <div className="grid grid-cols-3 gap-2 text-xs bg-white/60 rounded-lg p-2">
+          {/* MVP */}
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Trophy className="w-3 h-3 text-yellow-600" />
+              <span className="font-bold text-yellow-700">{member.stats.mvpCount}</span>
+            </div>
+            <div className="text-gray-500">MVP</div>
+          </div>
+
+          {/* KDA */}
+          <div className="text-center">
+            <div className="font-bold text-blue-700 mb-1">
+              {kda.toFixed(1)}
+            </div>
+            <div className="text-gray-500">KDA</div>
+          </div>
+
+          {/* 연승/연패 */}
+          <div className="text-center">
+            <div className="mb-1">
+              {member.stats.currentStreak === 0 ? (
+                <span className="font-bold text-gray-600">-</span>
+              ) : (
+                <span className={cn(
+                  "font-bold",
+                  member.stats.currentStreak > 0 ? "text-green-600" : "text-red-500"
+                )}>
+                  {Math.abs(member.stats.currentStreak)}
+                </span>
+              )}
+            </div>
+            <div className="text-gray-500">
+              {member.stats.currentStreak === 0 ? '보통' : 
+               member.stats.currentStreak > 0 ? '연승' : '연패'}
+            </div>
+          </div>
         </div>
 
         {/* 액션 버튼 영역 */}
