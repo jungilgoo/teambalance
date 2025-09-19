@@ -13,6 +13,7 @@ import { positionNames } from '@/lib/utils'
 import { getChampionSplashArt, getChampionFallbackGradient } from '@/lib/champion-images'
 import { getTeamMembersStats, MemberStatsForTeam } from '@/lib/api/personal-stats'
 import { Users, Crown, Plus, Play, BarChart3, Settings, History, Trophy, Wifi, WifiOff, User } from 'lucide-react'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { useTeamMembersRealtime } from '@/lib/hooks/useTeamMembersRealtime'
 import { usePendingRequestsCount } from '@/lib/hooks/usePendingRequestsRealtime'
 import TeamBalanceModal from '@/components/session/TeamBalanceModal'
@@ -297,6 +298,9 @@ export default function TeamDashboard() {
             </div>
             
             <div className="flex items-center space-x-2">
+              {/* 테마 토글 */}
+              <ThemeToggle />
+              
               {/* 실시간 연결 상태 표시 */}
               <div className="flex items-center space-x-1">
                 {realtimeConnected ? (
