@@ -351,7 +351,7 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
     }
   }
 
-  // 결과 영역 스크린샷 저장
+  // 결과 영역 스크린샷 - 클립보드 복사 + 파일 저장
   const handleCaptureScreenshot = async () => {
     if (!balancedTeams || !resultRef.current) return
     
@@ -372,17 +372,40 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
         height: resultRef.current.offsetHeight,
       })
       
-      // 캔버스를 이미지로 변환하여 다운로드
-      const link = document.createElement('a')
-      link.download = `팀밸런싱_${new Date().toLocaleDateString('ko-KR').replace(/\./g, '_')}.png`
-      link.href = canvas.toDataURL('image/png')
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      // 1. 클립보드에 이미지 복사 (바로 붙여넣기용)
+      try {
+        const blob = await new Promise<Blob>((resolve) => {
+          canvas.toBlob((blob) => {
+            resolve(blob!)
+          }, 'image/png')
+        })
+        
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'image/png': blob
+          })
+        ])
+        
+        // 클립보드 복사 성공 알림
+        alert('✅ 클립보드에 복사되었습니다!\n\n디스코드, 카카오톡 등에 Ctrl+V로 바로 붙여넣기 하세요.')
+        
+      } catch (clipboardError) {
+        console.warn('클립보드 복사 실패, 파일 다운로드로 대체:', clipboardError)
+        
+        // 클립보드 복사 실패 시 파일 다운로드로 대체
+        const link = document.createElement('a')
+        link.download = `팀밸런싱_${new Date().toLocaleDateString('ko-KR').replace(/\./g, '_')}.png`
+        link.href = canvas.toDataURL('image/png')
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        alert('📁 파일로 다운로드되었습니다!\n\n(클립보드 복사가 지원되지 않는 환경)')
+      }
       
     } catch (error) {
       console.error('스크린샷 생성 실패:', error)
-      alert('스크린샷 저장에 실패했습니다. 다시 시도해주세요.')
+      alert('❌ 스크린샷 생성에 실패했습니다.\n다시 시도해주세요.')
     } finally {
       setIsCapturing(false)
     }
