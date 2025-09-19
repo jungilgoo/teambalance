@@ -357,6 +357,8 @@ export interface MemberStatsForTeam {
   averageKDA: number
   topChampion: string | null
   championPlayCount: number
+  mvpCount: number
+  currentStreak: number
 }
 
 export const getTeamMembersStats = async (
@@ -412,13 +414,77 @@ export const getTeamMembersStats = async (
         const topChampion = sortedChampions.length > 0 ? sortedChampions[0][0] : null
         const championPlayCount = sortedChampions.length > 0 ? sortedChampions[0][1] : 0
 
+        // MVP 횟수 계산
+        const { data: mvpMatches, error: mvpError } = await supabase
+          .from('matches')
+          .select('id')
+          .eq('team_id', teamId)
+          .eq('mvp_member_id', member.id)
+          .not('mvp_member_id', 'is', null)
+
+        const mvpCount = mvpError ? 0 : (mvpMatches?.length || 0)
+
+        // 연속 기록 계산 (최근 경기부터 역순으로)
+        let currentStreak = 0
+        if (matchHistory.length > 0) {
+          // 승패 정보를 위해 매치 데이터 조회
+          const { data: matches, error: matchError } = await supabase
+            .from('matches')
+            .select('id, winner, created_at')
+            .eq('team_id', teamId)
+            .order('created_at', { ascending: false })
+
+          if (!matchError && matches) {
+            // 매치 ID별 승패 정보 매핑
+            const matchResults = new Map<string, string>()
+            matches.forEach((match: any) => {
+              matchResults.set(match.id, match.winner)
+            })
+
+            // 사용자 매치 기록을 최신순으로 정렬
+            const sortedMatchHistory = [...matchHistory].sort((a, b) => {
+              const matchA = (matches as any[]).find((m: any) => m.id === a.matchId)
+              const matchB = (matches as any[]).find((m: any) => m.id === b.matchId)
+              if (!matchA || !matchB) return 0
+              return new Date(matchB.created_at).getTime() - new Date(matchA.created_at).getTime()
+            })
+
+            // 연속 기록 계산
+            let lastResult: boolean | null = null
+            for (const record of sortedMatchHistory) {
+              const matchWinner = matchResults.get(record.matchId || '')
+              if (!matchWinner) continue
+
+              const isWin = record.teamSide === matchWinner
+
+              if (lastResult === null) {
+                // 첫 번째 경기
+                lastResult = isWin
+                currentStreak = isWin ? 1 : -1
+              } else if (lastResult === isWin) {
+                // 같은 결과가 계속됨
+                if (isWin) {
+                  currentStreak++
+                } else {
+                  currentStreak--
+                }
+              } else {
+                // 연속 기록이 끊어짐
+                break
+              }
+            }
+          }
+        }
+
         return {
           memberId: member.id,
           userId: member.user_id,
           nickname: member.nickname,
           averageKDA,
           topChampion,
-          championPlayCount
+          championPlayCount,
+          mvpCount,
+          currentStreak
         }
       })
     )

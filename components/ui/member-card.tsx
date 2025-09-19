@@ -29,6 +29,9 @@ interface MemberCardProps {
   showActions?: boolean
   children?: React.ReactNode
   topChampion?: string | null
+  actualKDA?: number
+  actualMvpCount?: number
+  actualCurrentStreak?: number
 }
 
 // 포지션별 아이콘 매핑
@@ -57,7 +60,10 @@ export function MemberCard({
   className,
   showActions = false,
   children,
-  topChampion
+  topChampion,
+  actualKDA,
+  actualMvpCount,
+  actualCurrentStreak
 }: MemberCardProps) {
   const MainPositionIcon = positionIcons[member.mainPosition]
   const totalWins = member.stats?.totalWins ?? 0
@@ -66,14 +72,8 @@ export function MemberCard({
     ? Math.round((totalWins / (totalWins + totalLosses)) * 100)
     : 0
 
-  // KDA는 실제 킬/데스/어시스트 데이터가 필요하지만, 현재는 승률을 기반으로 추정
-  // 승률과 멤버 ID를 기반으로 한 일관된 KDA 계산
-  const memberIdHash = member.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  const kda = totalWins + totalLosses > 0
-    ? winRate >= 70 ? 3.5 + (memberIdHash % 150) / 100 // 70% 이상: 3.5-5.0
-    : winRate >= 50 ? 2.0 + (winRate - 50) * 0.075 // 50-70%: 2.0-3.5
-    : 0.5 + winRate * 0.03 // 50% 이하: 0.5-2.0
-    : 1.0
+  // 실제 KDA 데이터가 있으면 사용하고, 없으면 기본값 사용
+  const kda = actualKDA !== undefined ? actualKDA : 1.0
 
   // 챔피언 배경 이미지 관련
   const championImage = getChampionSplashArt(topChampion)
@@ -135,10 +135,10 @@ export function MemberCard({
           </div>
 
           {/* MVP 배지 */}
-          {(member.stats?.mvpCount ?? 0) > 0 && (
+          {(actualMvpCount !== undefined ? actualMvpCount : (member.stats?.mvpCount ?? 0)) > 0 && (
             <div className="flex items-center gap-1 px-3 py-2 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-medium">
               <Trophy className="w-4 h-4" />
-              {member.stats?.mvpCount ?? 0}
+              {actualMvpCount !== undefined ? actualMvpCount : (member.stats?.mvpCount ?? 0)}
             </div>
           )}
         </div>
@@ -204,7 +204,7 @@ export function MemberCard({
             <div className="flex items-center justify-center gap-1 mb-1">
               <Trophy className="w-3 h-3 text-yellow-600" />
               <span className="font-bold text-yellow-700">
-                {member.stats?.mvpCount ?? 0}
+                {actualMvpCount !== undefined ? actualMvpCount : (member.stats?.mvpCount ?? 0)}
               </span>
             </div>
             <div className="text-gray-500">MVP</div>
@@ -221,20 +221,25 @@ export function MemberCard({
           {/* 연승/연패 */}
           <div className="text-center">
             <div className="mb-1">
-              {(member.stats?.currentStreak ?? 0) === 0 ? (
-                <span className="font-bold text-gray-600">-</span>
-              ) : (
-                <span className={cn(
-                  "font-bold",
-                  (member.stats?.currentStreak ?? 0) > 0 ? "text-green-600" : "text-red-500"
-                )}>
-                  {Math.abs(member.stats?.currentStreak ?? 0)}
-                </span>
-              )}
+              {(() => {
+                const streak = actualCurrentStreak !== undefined ? actualCurrentStreak : (member.stats?.currentStreak ?? 0)
+                return streak === 0 ? (
+                  <span className="font-bold text-gray-600">-</span>
+                ) : (
+                  <span className={cn(
+                    "font-bold",
+                    streak > 0 ? "text-green-600" : "text-red-500"
+                  )}>
+                    {Math.abs(streak)}
+                  </span>
+                )
+              })()}
             </div>
             <div className="text-gray-500">
-              {(member.stats?.currentStreak ?? 0) === 0 ? '보통' : 
-               (member.stats?.currentStreak ?? 0) > 0 ? '연승' : '연패'}
+              {(() => {
+                const streak = actualCurrentStreak !== undefined ? actualCurrentStreak : (member.stats?.currentStreak ?? 0)
+                return streak === 0 ? '보통' : streak > 0 ? '연승' : '연패'
+              })()}
             </div>
           </div>
         </div>

@@ -480,7 +480,7 @@ export default function TeamDashboard() {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {memberStatsWithWinRate.map((member) => {
-                    // 해당 멤버의 주력 챔피언 찾기
+                    // 해당 멤버의 주력 챔피언 및 실제 통계 찾기
                     const memberChampionStat = memberChampionStats.find(stat => stat.memberId === member.id);
                     const topChampion = memberChampionStat?.topChampion;
                     
@@ -491,6 +491,9 @@ export default function TeamDashboard() {
                         currentUserId={authState.user?.id}
                         isLeader={authState.user?.id === team?.leaderId}
                         topChampion={topChampion}
+                        actualKDA={memberChampionStat?.averageKDA}
+                        actualMvpCount={memberChampionStat?.mvpCount}
+                        actualCurrentStreak={memberChampionStat?.currentStreak}
                         onClick={() => {
                           // 티어나 포지션 편집 모달을 열기 위한 클릭 핸들러 유지
                           console.log('Member card clicked:', member.nickname)
