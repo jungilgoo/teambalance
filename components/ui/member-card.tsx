@@ -13,7 +13,9 @@ import {
   Shield,
   Zap,
   Heart,
-  Users
+  Users,
+  Crosshair,
+  Search
 } from 'lucide-react'
 
 interface MemberCardProps {
@@ -30,9 +32,9 @@ interface MemberCardProps {
 // 포지션별 아이콘 매핑
 const positionIcons = {
   top: Swords,
-  jungle: Target,
+  jungle: Search,
   mid: Zap,
-  adc: TrendingUp,
+  adc: Crosshair,
   support: Heart
 }
 
@@ -133,10 +135,10 @@ export function MemberCard({
         </div>
 
         {/* 포지션 정보 */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex items-center gap-1">
-            <MainPositionIcon className={cn("w-4 h-4", positionColors[member.mainPosition])} />
-            <span className="text-sm font-medium text-gray-700">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-1.5">
+            <MainPositionIcon className={cn("w-5 h-5", positionColors[member.mainPosition])} />
+            <span className="text-base font-semibold text-gray-800">
               {positionNames[member.mainPosition]}
             </span>
           </div>
@@ -144,9 +146,9 @@ export function MemberCard({
           {member.subPositions && member.subPositions.length > 0 && (
             <>
               <span className="text-gray-400">|</span>
-              <div className="flex items-center gap-1">
-                <Users className="w-3 h-3 text-gray-500" />
-                <span className="text-xs text-gray-500">
+              <div className="flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">
                   {member.subPositions.slice(0, 2).map(pos => positionNames[pos]).join(', ')}
                   {member.subPositions.length > 2 && '...'}
                 </span>
