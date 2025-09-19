@@ -128,7 +128,7 @@ export function MemberCard({
 
             {/* 리더 크라운 */}
             {member.role === 'leader' && (
-              <div className="absolute -top-2 -right-2 w-7 h-7 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
+              <div className="absolute -top-2 -right-1 w-7 h-7 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
                 <Crown className="w-4 h-4 text-white" />
               </div>
             )}
@@ -136,7 +136,7 @@ export function MemberCard({
 
           {/* 편집 버튼들 */}
           {showActions && children && (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 relative z-10">
               {children}
             </div>
           )}
