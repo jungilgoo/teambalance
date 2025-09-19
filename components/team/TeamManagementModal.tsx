@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { MemberCard } from '@/components/ui/member-card'
 import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -358,59 +359,45 @@ export default function TeamManagementModal({
                     <span className="font-medium">승인 대기 중 ({pendingRequests.length}명)</span>
                   </div>
 
-                  {pendingRequests.map((request) => (
-                    <Card key={request.id} className="border border-gray-200 hover:border-gray-300 transition-colors">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          {/* 신청자 정보 */}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                                <span className="text-sm font-medium text-gray-600">
-                                  {request.nickname.charAt(0)}
-                                </span>
-                              </div>
-                              <div>
-                                <h3 className="font-semibold text-lg">{request.nickname}</h3>
-                                <p className="text-sm text-gray-500">
-                                  {formatTimeAgo(request.joinedAt)} 신청
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-4 mb-3">
-                              <TierBadge tier={request.tier} />
-                              <div className="text-sm">
-                                <span className="font-medium text-blue-600">주포지션:</span> {positionNames[request.mainPosition]}
-                              </div>
-                              <div className="text-sm">
-                                <span className="font-medium text-green-600">부포지션:</span>{' '}
-                                {request.subPositions && request.subPositions.length > 0 
-                                  ? request.subPositions.map(pos => positionNames[pos]).join(', ')
-                                  : '없음'}
-                              </div>
-                            </div>
-
-                            {request.joinType === 'public' && (
-                              <div className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs">
-                                <AlertCircle className="w-3 h-3" />
-                                공개 참가 신청
-                              </div>
-                            )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {pendingRequests.map((request) => (
+                      <div key={request.id} className="space-y-3">
+                        <MemberCard
+                          member={request}
+                          currentUserId={currentUserId}
+                          isLeader={isLeader}
+                          showActions={true}
+                          className="relative"
+                        >
+                          {/* 승인 대기 중 표시 */}
+                          <div className="absolute top-2 right-2 bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-medium">
+                            승인 대기
                           </div>
 
+                          {/* 신청 시간 표시 */}
+                          <div className="text-xs text-gray-500 mb-2">
+                            {formatTimeAgo(request.joinedAt)} 신청
+                          </div>
+
+                          {request.joinType === 'public' && (
+                            <div className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs mb-3">
+                              <AlertCircle className="w-3 h-3" />
+                              공개 참가 신청
+                            </div>
+                          )}
+
                           {/* 액션 버튼 */}
-                          <div className="flex gap-2 ml-4">
+                          <div className="flex gap-2">
                             <Button
                               onClick={() => handleApprove(request.id, request.nickname)}
                               disabled={request.isProcessing}
                               size="sm"
-                              className="bg-green-600 hover:bg-green-700 text-white"
+                              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                             >
                               {request.isProcessing ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-4 h-4 animate-spin mr-1" />
                               ) : (
-                                <UserCheck className="w-4 h-4" />
+                                <UserCheck className="w-4 h-4 mr-1" />
                               )}
                               승인
                             </Button>
@@ -420,55 +407,58 @@ export default function TeamManagementModal({
                               disabled={request.isProcessing}
                               size="sm"
                               variant="destructive"
+                              className="flex-1"
                             >
                               {request.isProcessing ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-4 h-4 animate-spin mr-1" />
                               ) : (
-                                <UserX className="w-4 h-4" />
+                                <UserX className="w-4 h-4 mr-1" />
                               )}
                               거절
                             </Button>
                           </div>
-                        </div>
+                        </MemberCard>
 
                         {/* 거절 사유 입력 */}
                         {rejectingUserId === request.id && (
-                          <div className="mt-4 pt-4 border-t">
-                            <Label htmlFor="rejection-reason" className="text-sm font-medium">
-                              거절 사유 (선택사항)
-                            </Label>
-                            <Input
-                              id="rejection-reason"
-                              placeholder="거절 사유를 입력하세요..."
-                              value={rejectionReason}
-                              onChange={(e) => setRejectionReason(e.target.value)}
-                              className="mt-2 mb-3"
-                            />
-                            <div className="flex gap-2 justify-end">
-                              <Button
-                                onClick={() => {
-                                  setRejectingUserId(null)
-                                  setRejectionReason('')
-                                }}
-                                size="sm"
-                                variant="outline"
-                              >
-                                취소
-                              </Button>
-                              <Button
-                                onClick={() => handleReject(request.id, request.nickname)}
-                                size="sm"
-                                variant="destructive"
-                              >
-                                <XCircle className="w-4 h-4 mr-1" />
-                                거절 확인
-                              </Button>
-                            </div>
-                          </div>
+                          <Card className="border border-orange-200 bg-orange-50/50">
+                            <CardContent className="p-4">
+                              <Label htmlFor="rejection-reason" className="text-sm font-medium">
+                                거절 사유 (선택사항)
+                              </Label>
+                              <Input
+                                id="rejection-reason"
+                                placeholder="거절 사유를 입력하세요..."
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                                className="mt-2 mb-3"
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <Button
+                                  onClick={() => {
+                                    setRejectingUserId(null)
+                                    setRejectionReason('')
+                                  }}
+                                  size="sm"
+                                  variant="outline"
+                                >
+                                  취소
+                                </Button>
+                                <Button
+                                  onClick={() => handleReject(request.id, request.nickname)}
+                                  size="sm"
+                                  variant="destructive"
+                                >
+                                  <XCircle className="w-4 h-4 mr-1" />
+                                  거절 확인
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
                         )}
-                      </CardContent>
-                    </Card>
-                  ))}
+                      </div>
+                    ))}
+                  </div>
                 </>
               )}
             </>
@@ -489,76 +479,35 @@ export default function TeamManagementModal({
                     <span className="font-medium">활성 멤버 ({activeMembers.length}명)</span>
                   </div>
 
-                  {activeMembers.map((member) => (
-                    <Card key={member.id} className="border border-gray-200 hover:border-gray-300 transition-colors">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          {/* 멤버 정보 */}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                                <span className="text-sm font-medium text-gray-600">
-                                  {member.nickname.charAt(0)}
-                                </span>
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h3 className="font-semibold text-lg">{member.nickname}</h3>
-                                  {member.role === 'leader' && (
-                                    <Crown className="w-4 h-4 text-yellow-500" />
-                                  )}
-                                </div>
-                                <p className="text-sm text-gray-500">
-                                  {formatTimeAgo(member.joinedAt)} 참가
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-4 mb-3">
-                              <TierBadge tier={member.tier} />
-                              <div className="text-sm">
-                                <span className="font-medium text-blue-600">주포지션:</span> {positionNames[member.mainPosition]}
-                              </div>
-                              <div className="text-sm">
-                                <span className="font-medium text-green-600">부포지션:</span>{' '}
-                                {member.subPositions && member.subPositions.length > 0 
-                                  ? member.subPositions.map(pos => positionNames[pos]).join(', ')
-                                  : '없음'}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
-                              <div>티어점수: <span className="font-medium">{member.stats.tierScore}</span></div>
-                              <div>총 {member.stats.totalWins}승 {member.stats.totalLosses}패</div>
-                              {member.stats.mvpCount > 0 && (
-                                <div>MVP {member.stats.mvpCount}회</div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* 추방 버튼 (리더가 아니고 자신이 아닌 경우만) */}
-                          {member.role !== 'leader' && member.userId !== currentUserId && (
-                            <div className="flex items-center ml-4">
-                              <Button
-                                onClick={() => handleKickMember(member)}
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                disabled={isKicking}
-                              >
-                                {isKicking ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-4 h-4" />
-                                )}
-                                추방
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {activeMembers.map((member) => (
+                      <MemberCard
+                        key={member.id}
+                        member={member}
+                        currentUserId={currentUserId}
+                        isLeader={isLeader}
+                        showActions={isLeader && member.role !== 'leader' && member.userId !== currentUserId}
+                      >
+                        {/* 추방 버튼 (리더가 아니고 자신이 아닌 경우만) */}
+                        {isLeader && member.role !== 'leader' && member.userId !== currentUserId && (
+                          <Button
+                            onClick={() => handleKickMember(member)}
+                            variant="ghost"
+                            size="sm"
+                            className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                            disabled={isKicking}
+                          >
+                            {isKicking ? (
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            ) : (
+                              <Trash2 className="w-4 h-4 mr-2" />
+                            )}
+                            추방
+                          </Button>
+                        )}
+                      </MemberCard>
+                    ))}
+                  </div>
                 </>
               )}
             </>
