@@ -84,18 +84,117 @@ export function MemberCard({
   const championImage = getChampionSplashArt(topChampion)
   const fallbackGradient = getChampionFallbackGradient(topChampion)
 
+  // 조건부 렌더링으로 앞면/뒷면 구분
+  if (isFlipped) {
+    return (
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-xl border-2 bg-gradient-to-br from-white to-gray-50",
+          "shadow-lg hover:shadow-xl transition-all duration-500 cursor-pointer h-80",
+          "transform animate-pulse",
+          getTierBorderColor(member.tier),
+          className
+        )}
+        onClick={(e) => {
+          e.stopPropagation()
+          setIsFlipped(false)
+          onClick?.()
+        }}
+      >
+        {/* 뒷면 - 최근 5경기 */}
+        <div className="h-full p-5 flex flex-col">
+          {/* 뒷면 헤더 */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-yellow-600" />
+              <h3 className="font-bold text-gray-800">최근 경기</h3>
+            </div>
+            <div className="text-sm text-gray-500">{recentMatches.length}경기</div>
+          </div>
+
+          {/* 최근 경기 목록 */}
+          <div className="flex-1 space-y-3 overflow-y-auto">
+            {recentMatches.length > 0 ? (
+              recentMatches.map((match, index) => {
+                const kda = match.deaths > 0 
+                  ? ((match.kills + match.assists) / match.deaths).toFixed(1)
+                  : `${match.kills + match.assists}.0`
+
+                return (
+                  <div
+                    key={`${match.matchId}-${index}`}
+                    className={cn(
+                      "p-3 rounded-lg border-2 flex items-center justify-between",
+                      match.isWin 
+                        ? "bg-blue-50 border-blue-200" 
+                        : "bg-red-50 border-red-200"
+                    )}
+                  >
+                    {/* 챔피언 & 결과 */}
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "px-2 py-1 rounded text-xs font-bold",
+                        match.isWin ? "bg-blue-500 text-white" : "bg-red-500 text-white"
+                      )}>
+                        {match.isWin ? "승리" : "패배"}
+                      </div>
+                      <div className="font-medium text-gray-800">
+                        {match.champion}
+                      </div>
+                    </div>
+
+                    {/* KDA & MVP */}
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium">{match.kills}</span>/
+                        <span className="font-medium text-red-500">{match.deaths}</span>/
+                        <span className="font-medium">{match.assists}</span>
+                        <span className="ml-1 text-gray-500">({kda})</span>
+                      </div>
+                      {match.isMvp && (
+                        <Trophy className="w-4 h-4 text-yellow-500" />
+                      )}
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-gray-500">
+                <div className="text-center">
+                  <Trophy className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">경기 기록이 없습니다</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 뒷면 하단 정보 */}
+          <div className="mt-4 pt-3 border-t border-gray-200">
+            <div className="text-center text-xs text-gray-500">
+              카드를 다시 클릭하면 기본 정보로 돌아갑니다
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       className={cn(
         // 기본 카드 스타일
         "relative overflow-hidden rounded-xl border-2 bg-gradient-to-br from-white to-gray-50",
         "shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer",
-        "transform hover:scale-105 hover:-translate-y-1",
+        "transform hover:scale-105 hover:-translate-y-1 h-80",
         // 티어에 따른 테두리 색상
         getTierBorderColor(member.tier),
         className
       )}
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation()
+        setIsFlipped(true)
+        onClick?.()
+      }}
     >
       {/* 챔피언 배경 이미지 또는 티어 그라데이션 */}
       {championImage ? (
@@ -133,7 +232,7 @@ export function MemberCard({
 
             {/* 리더 크라운 */}
             {member.role === 'leader' && (
-              <div className="absolute -top-2 -right-2 w-7 h-7 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
+              <div className="absolute -top-2 -right-1 w-7 h-7 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
                 <Crown className="w-4 h-4 text-white" />
               </div>
             )}
@@ -141,7 +240,7 @@ export function MemberCard({
 
           {/* 편집 버튼들 */}
           {showActions && children && (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 relative z-10">
               {children}
             </div>
           )}
