@@ -496,7 +496,7 @@ export default function TeamDashboard() {
                           // 티어나 포지션 편집 모달을 열기 위한 클릭 핸들러 유지
                           console.log('Member card clicked:', member.nickname)
                         }}
-                        showActions={authState.user?.id === member.userId || isTeamLeader}
+                        showActions={authState.user?.id === member.userId || !!isTeamLeader}
                       >
                         <div className="flex gap-2">
                           <button

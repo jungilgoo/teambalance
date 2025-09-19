@@ -24,7 +24,7 @@ interface MemberCardProps {
   className?: string
   showActions?: boolean
   children?: React.ReactNode
-  topChampion?: string
+  topChampion?: string | null
   championPlayCount?: number
 }
 

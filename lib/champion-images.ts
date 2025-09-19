@@ -176,7 +176,7 @@ export const championNameMap: Record<string, string> = {
  * @param skinNumber 스킨 번호 (기본값: 0 = 기본 스킨)
  * @returns 이미지 URL 또는 null
  */
-export const getChampionSplashArt = (koreanName?: string, skinNumber: number = 0): string | null => {
+export const getChampionSplashArt = (koreanName?: string | null, skinNumber: number = 0): string | null => {
   if (!koreanName) return null;
   
   const englishName = championNameMap[koreanName];
@@ -193,7 +193,7 @@ export const getChampionSplashArt = (koreanName?: string, skinNumber: number = 0
  * @param koreanName 한글 챔피언 이름  
  * @returns 이미지 URL 또는 null
  */
-export const getChampionSquareIcon = (koreanName?: string): string | null => {
+export const getChampionSquareIcon = (koreanName?: string | null): string | null => {
   if (!koreanName) return null;
   
   const englishName = championNameMap[koreanName];
@@ -206,7 +206,7 @@ export const getChampionSquareIcon = (koreanName?: string): string | null => {
 /**
  * 챔피언 이미지가 로드되지 않을 때의 fallback 색상을 반환합니다
  */
-export const getChampionFallbackGradient = (koreanName?: string): string => {
+export const getChampionFallbackGradient = (koreanName?: string | null): string => {
   if (!koreanName) return 'from-gray-200 to-gray-300';
   
   // 챔피언 이름의 해시값을 기반으로 색상 생성
