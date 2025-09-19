@@ -148,20 +148,26 @@ export default function TeamMatchesPage() {
     isWinner: boolean, 
     mvpMemberId?: string 
   }) => (
-    <div className={`p-3 rounded-lg ${isWinner ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
+    <div className={`p-3 rounded-lg ${
+      isWinner 
+        ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
+        : 'bg-gray-50 dark:bg-gray-800/50'
+    }`}>
       <div className="space-y-2">
         {team.members.map((member: any, index: number) => {
           const isMVP = mvpMemberId === member.memberId
           return (
-            <div key={index} className={`grid grid-cols-4 gap-3 text-sm py-1 ${isMVP ? 'bg-yellow-50 border border-yellow-200 rounded px-2' : ''}`}>
+            <div key={index} className={`grid grid-cols-4 gap-3 text-sm py-1 ${
+              isMVP ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded px-2' : ''
+            }`}>
               <div className="font-medium text-muted-foreground">
                 {positionNames[member.position as keyof typeof positionNames]}
               </div>
               <div className="font-medium flex items-center gap-1">
                 {memberNicknames[member.memberId] || `Player ${member.memberId}`}
-                {isMVP && <Trophy className="w-3 h-3 text-yellow-600" />}
+                {isMVP && <Trophy className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />}
               </div>
-              <div className="text-blue-600 font-medium">
+              <div className="text-blue-600 dark:text-blue-400 font-medium">
                 {member.champion}
               </div>
               <div className="font-mono">
@@ -254,7 +260,7 @@ export default function TeamMatchesPage() {
                         size="sm"
                         onClick={() => handleDeleteMatch(match.id)}
                         disabled={deletingMatchId === match.id}
-                        className="shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="shrink-0 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
                       >
                         {deletingMatchId === match.id ? (
                           <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
@@ -269,7 +275,7 @@ export default function TeamMatchesPage() {
                 
                 <CardContent className="space-y-4">
                   {/* 헤더 라벨 */}
-                  <div className="grid grid-cols-4 gap-3 text-xs font-semibold text-muted-foreground px-3 py-1 bg-gray-100 rounded">
+                  <div className="grid grid-cols-4 gap-3 text-xs font-semibold text-muted-foreground px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded">
                     <div>포지션</div>
                     <div>선수이름</div>
                     <div>챔피언</div>
@@ -280,7 +286,7 @@ export default function TeamMatchesPage() {
                   <div>
                     <div className="text-sm font-semibold mb-2 flex items-center gap-2">
                       <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      블루팀 {match.winner === 'team1' && <span className="text-green-600 font-bold">(승리)</span>}
+                      블루팀 {match.winner === 'team1' && <span className="text-green-600 dark:text-green-400 font-bold">(승리)</span>}
                     </div>
                     <TeamPlayerTable 
                       team={match.team1} 
@@ -293,7 +299,7 @@ export default function TeamMatchesPage() {
                   <div>
                     <div className="text-sm font-semibold mb-2 flex items-center gap-2">
                       <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      레드팀 {match.winner === 'team2' && <span className="text-green-600 font-bold">(승리)</span>}
+                      레드팀 {match.winner === 'team2' && <span className="text-green-600 dark:text-green-400 font-bold">(승리)</span>}
                     </div>
                     <TeamPlayerTable 
                       team={match.team2} 
