@@ -10,6 +10,8 @@ import { Team, TeamMember } from '@/lib/types'
 import { getTeamById, getTeamMembers, getUserById, updateMemberTier, updateMemberPositions, getTopRankings, getTeamMVPRanking, getCurrentStreaks, getPendingJoinRequests } from '@/lib/supabase-api'
 import { calculateWinRate } from '@/lib/stats'
 import { positionNames } from '@/lib/utils'
+import { getChampionSplashArt, getChampionFallbackGradient } from '@/lib/champion-images'
+import { getTeamMembersStats, MemberStatsForTeam } from '@/lib/api/personal-stats'
 import { Users, Crown, Plus, Play, BarChart3, Settings, History, Trophy, Wifi, WifiOff, User } from 'lucide-react'
 import { useTeamMembersRealtime } from '@/lib/hooks/useTeamMembersRealtime'
 import { usePendingRequestsCount } from '@/lib/hooks/usePendingRequestsRealtime'
@@ -32,6 +34,7 @@ export default function TeamDashboard() {
   const [topRankings, setTopRankings] = useState<Array<{nickname: string, winRate: number}>>([])
   const [mvpLeader, setMvpLeader] = useState<{memberId: string, nickname: string, mvpCount: number} | null>(null)
   const [currentStreak, setCurrentStreak] = useState<{nickname: string, streak: number} | null>(null)
+  const [memberChampionStats, setMemberChampionStats] = useState<MemberStatsForTeam[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   // 실시간 팀 멤버 관리 (항상 호출하여 Hook 순서 일관성 유지)
@@ -96,11 +99,12 @@ export default function TeamDashboard() {
       setIsLoading(true)
       try {
         // 팀 데이터 로드
-        const [teamData, rankings, mvpRanking, streak] = await Promise.all([
+        const [teamData, rankings, mvpRanking, streak, championStatsData] = await Promise.all([
           getTeamById(teamId),
           getTopRankings(teamId),
           getTeamMVPRanking(teamId),
-          getCurrentStreaks(teamId)
+          getCurrentStreaks(teamId),
+          getTeamMembersStats(teamId)
         ])
 
         if (!teamData) {
@@ -115,6 +119,7 @@ export default function TeamDashboard() {
         setTopRankings(rankings)
         setMvpLeader(mvp)
         setCurrentStreak(streak)
+        setMemberChampionStats(championStatsData)
       } catch (error) {
         console.error('팀 페이지: 데이터 로드 오류:', error)
         router.push('/dashboard')
@@ -473,56 +478,93 @@ export default function TeamDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {memberStatsWithWinRate.map((member) => (
-                    <div key={member.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <h3 className="font-semibold text-lg break-words min-w-0">{member.nickname}</h3>
-                            <button
-                              onClick={() => handleTierBadgeClick(member)}
-                              className="transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md flex-shrink-0"
-                            >
-                              <TierBadge tier={member.tier} size="sm" />
-                            </button>
-                            {member.role === 'leader' && (
-                              <Crown className="w-4 h-4 text-yellow-500 flex-shrink-0" />
-                            )}
-                          </div>
+                  {memberStatsWithWinRate.map((member) => {
+                    // 해당 멤버의 주력 챔피언 찾기
+                    const memberChampionStat = memberChampionStats.find(stat => stat.memberId === member.id);
+                    const topChampion = memberChampionStat?.topChampion;
+                    const championImage = getChampionSplashArt(topChampion);
+                    const fallbackGradient = getChampionFallbackGradient(topChampion);
+                    
+                    return (
+                      <div key={member.id} className="relative overflow-hidden rounded-lg">
+                        {/* 챔피언 배경 이미지 또는 fallback 그라데이션 */}
+                        {championImage ? (
+                          <div 
+                            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                            style={{ 
+                              backgroundImage: `linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.45)), url(${championImage})`,
+                            }}
+                          />
+                        ) : (
+                          <div className={`absolute inset-0 bg-gradient-to-br ${fallbackGradient} opacity-20`} />
+                        )}
+                        
+                        {/* 멤버 카드 내용 */}
+                        <div className="relative p-4 border rounded-lg hover:bg-white/10 transition-colors">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <h3 className={`font-semibold text-lg break-words min-w-0 ${championImage ? 'text-white drop-shadow-lg' : ''}`}>
+                                  {member.nickname}
+                                </h3>
+                                
+                                {/* 주력 챔피언 표시 */}
+                                {topChampion && memberChampionStat && (
+                                  <span className="text-xs bg-black/40 text-white px-2 py-1 rounded-full backdrop-blur-sm">
+                                    주력: {topChampion} ({memberChampionStat.championPlayCount}게임)
+                                  </span>
+                                )}
+                                
+                                <button
+                                  onClick={() => handleTierBadgeClick(member)}
+                                  className="transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md flex-shrink-0"
+                                >
+                                  <TierBadge tier={member.tier} size="sm" />
+                                </button>
+                                {member.role === 'leader' && (
+                                  <Crown className="w-4 h-4 text-yellow-400 flex-shrink-0 drop-shadow-lg" />
+                                )}
+                              </div>
                           
-                          <div className="space-y-3 text-sm">
-                            <div>
-                              <div className="text-muted-foreground mb-1">포지션</div>
-                              <button
-                                onClick={() => handlePositionBadgeClick(member)}
-                                className="font-medium hover:text-blue-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md"
-                              >
-                                주: {positionNames[member.mainPosition]} / 부: {
-                                  member.subPositions && member.subPositions.length > 0 
-                                    ? member.subPositions.map(pos => positionNames[pos]).join(', ')
-                                    : '없음'
-                                }
-                              </button>
-                            </div>
-                            
-                            <div className="flex items-center gap-4 text-sm">
-                              <div className="text-muted-foreground">
-                                티어점수: <span className="font-medium text-foreground">{member.stats.tierScore}</span>
-                              </div>
-                              <div className="text-muted-foreground">•</div>
-                              <div className="text-muted-foreground">
-                                승률: <span className="font-medium text-green-600">{member.winRate}%</span>
-                              </div>
-                              <div className="text-muted-foreground">•</div>
-                              <div className="text-muted-foreground">
-                                <span className="font-medium text-foreground">{member.stats.totalWins}승 {member.stats.totalLosses}패</span>
+                              <div className="space-y-3 text-sm">
+                                <div>
+                                  <div className={`mb-1 ${championImage ? 'text-gray-200' : 'text-muted-foreground'}`}>포지션</div>
+                                  <button
+                                    onClick={() => handlePositionBadgeClick(member)}
+                                    className={`font-medium transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md ${
+                                      championImage 
+                                        ? 'text-white hover:text-blue-300 drop-shadow' 
+                                        : 'hover:text-blue-600'
+                                    }`}
+                                  >
+                                    주: {positionNames[member.mainPosition]} / 부: {
+                                      member.subPositions && member.subPositions.length > 0 
+                                        ? member.subPositions.map(pos => positionNames[pos]).join(', ')
+                                        : '없음'
+                                    }
+                                  </button>
+                                </div>
+                                
+                                <div className="flex items-center gap-4 text-sm">
+                                  <div className={championImage ? 'text-gray-200' : 'text-muted-foreground'}>
+                                    티어점수: <span className={`font-medium ${championImage ? 'text-white' : 'text-foreground'}`}>{member.stats.tierScore}</span>
+                                  </div>
+                                  <div className={championImage ? 'text-gray-200' : 'text-muted-foreground'}>•</div>
+                                  <div className={championImage ? 'text-gray-200' : 'text-muted-foreground'}>
+                                    승률: <span className={`font-medium ${championImage ? 'text-green-300' : 'text-green-600'}`}>{member.winRate}%</span>
+                                  </div>
+                                  <div className={championImage ? 'text-gray-200' : 'text-muted-foreground'}>•</div>
+                                  <div className={championImage ? 'text-gray-200' : 'text-muted-foreground'}>
+                                    <span className={`font-medium ${championImage ? 'text-white' : 'text-foreground'}`}>{member.stats.totalWins}승 {member.stats.totalLosses}패</span>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {members.length === 0 && (
