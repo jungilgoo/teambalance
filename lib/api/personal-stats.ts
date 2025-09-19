@@ -39,6 +39,13 @@ export interface PositionChampionStats {
   winRate: number
 }
 
+export interface TeammateCompatibility {
+  teammateId: string
+  teammateNickname: string
+  totalGames: number
+  winRate: number
+}
+
 // ============================================================================
 // 개인 통계 API 함수들
 // ============================================================================
@@ -511,6 +518,121 @@ export const getUserPositionChampionStats = async (
     return result
   } catch (error) {
     console.error('포지션별 챔피언 통계 조회 실패:', error)
+    return []
+  }
+}
+
+/**
+ * 팀원과의 조합 통계를 조회합니다
+ */
+export const getTeammateCompatibilityStats = async (
+  teamId: string,
+  userId: string
+): Promise<TeammateCompatibility[]> => {
+  try {
+    if (!validateUUID(teamId) || !validateUUID(userId)) {
+      console.error('잘못된 ID 형식:', { teamId, userId })
+      return []
+    }
+
+    // 현재 사용자의 팀 멤버 ID 조회
+    const { data: currentMember, error: memberError } = await supabase
+      .from('team_members')
+      .select('id')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .single()
+
+    if (memberError || !currentMember) {
+      console.error('현재 사용자 팀 멤버 조회 오류:', memberError)
+      return []
+    }
+
+    // 현재 사용자의 매치 기록 조회
+    const { data: userMatches, error: userMatchError } = await supabase
+      .from('match_members')
+      .select(`
+        match_id,
+        team_side,
+        matches!inner(
+          id,
+          team_id,
+          winner
+        )
+      `)
+      .eq('team_member_id', (currentMember as any).id)
+      .eq('matches.team_id', teamId)
+
+    if (userMatchError || !userMatches) {
+      console.error('사용자 매치 기록 조회 오류:', userMatchError)
+      return []
+    }
+
+    // 팀원별 조합 통계 집계
+    const teammateStats: Record<string, {
+      teammateId: string
+      teammateNickname: string
+      totalGames: number
+      wins: number
+    }> = {}
+
+    // 각 매치에서 같은 팀에 있던 팀원들 찾기
+    for (const userMatch of userMatches as any[]) {
+      // 같은 매치, 같은 팀사이드의 다른 팀원들 조회
+      const { data: teammates, error: teammateError } = await supabase
+        .from('match_members')
+        .select(`
+          team_member_id,
+          team_members!inner(
+            id,
+            user_id,
+            nickname
+          )
+        `)
+        .eq('match_id', userMatch.match_id)
+        .eq('team_side', userMatch.team_side)
+        .neq('team_member_id', (currentMember as any).id)
+
+      if (teammateError || !teammates) {
+        continue
+      }
+
+      // 승리 여부 판정
+      const isWin = userMatch.team_side === userMatch.matches.winner
+
+      for (const teammate of teammates as any[]) {
+        const teammateUserId = teammate.team_members.user_id
+        const teammateNickname = teammate.team_members.nickname
+
+        if (!teammateStats[teammateUserId]) {
+          teammateStats[teammateUserId] = {
+            teammateId: teammateUserId,
+            teammateNickname,
+            totalGames: 0,
+            wins: 0
+          }
+        }
+
+        teammateStats[teammateUserId].totalGames++
+        if (isWin) {
+          teammateStats[teammateUserId].wins++
+        }
+      }
+    }
+
+    // TeammateCompatibility 배열로 변환 및 정렬
+    const result: TeammateCompatibility[] = Object.values(teammateStats)
+      .map(stats => ({
+        teammateId: stats.teammateId,
+        teammateNickname: stats.teammateNickname,
+        totalGames: stats.totalGames,
+        winRate: stats.totalGames > 0 ? Math.round((stats.wins / stats.totalGames) * 100) : 0
+      }))
+      .sort((a, b) => b.winRate - a.winRate || b.totalGames - a.totalGames)
+
+    return result
+  } catch (error) {
+    console.error('팀원 조합 통계 조회 실패:', error)
     return []
   }
 }

@@ -82,16 +82,16 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100 dark:from-gray-900 dark:via-gray-800 dark:to-yellow-900/20">
       {/* 헤더 */}
       <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
         <div className="container mx-auto py-3 sm:py-6">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-xl flex items-center justify-center">
-                <Gamepad2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900 rounded-xl flex items-center justify-center">
+                <Gamepad2 className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
               </div>
-              <h1 className="mobile-text-title font-bold text-gray-900 dark:text-white">롤 내전 매니저</h1>
+              <h1 className="mobile-text-title font-bold text-gray-900 dark:text-white">Team Balance</h1>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
               <div className="text-right">
@@ -131,7 +131,7 @@ export default function DashboardPage() {
             <div className="mb-6 sm:mb-12">
               <div className="flex items-center justify-between mb-4 sm:mb-8">
                 <div className="flex items-center space-x-3">
-                  <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <Users className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
                   <h3 className="mobile-text-title font-bold text-gray-900 dark:text-white">
                     내 팀 ({userTeams.length}개)
                   </h3>
@@ -142,13 +142,13 @@ export default function DashboardPage() {
                 {userTeams.map(({ team, member }) => (
                   <div 
                     key={team.id}
-                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 mobile-card-padding hover:shadow-xl transition-all duration-300 cursor-pointer group hover:scale-[1.02]"
+                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-600 mobile-card-padding hover:shadow-2xl transition-all duration-300 cursor-pointer group hover:scale-[1.02]"
                     onClick={() => router.push(`/team/${team.id}`)}
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-xl flex items-center justify-center">
-                          <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                        <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-xl flex items-center justify-center">
+                          <Users className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
                         </div>
                         <div>
                           <h4 className="font-bold mobile-text-subtitle text-gray-900 dark:text-white flex items-center gap-2 mobile-truncate-2">
@@ -162,7 +162,7 @@ export default function DashboardPage() {
                           </p>
                         </div>
                       </div>
-                      <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                      <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-yellow-600 transition-colors" />
                     </div>
                     
                     <p className="text-gray-600 dark:text-gray-300 mb-4 leading-relaxed mobile-truncate-3">
@@ -196,10 +196,10 @@ export default function DashboardPage() {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
               {/* 팀 생성 카드 */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 mobile-card-padding-lg">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-600 mobile-card-padding-lg">
                 <div className="text-center mb-6">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-2xl mb-4">
-                    <Plus className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-yellow-100 dark:bg-yellow-900 rounded-2xl mb-4">
+                    <Plus className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
                   </div>
                   <h4 className="mobile-text-subtitle font-bold text-gray-900 dark:text-white mb-2">팀 생성</h4>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
@@ -212,7 +212,7 @@ export default function DashboardPage() {
               </div>
 
               {/* 팀 참가 카드 */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 mobile-card-padding-lg">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-600 mobile-card-padding-lg">
                 <div className="text-center mb-6">
                   <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900 rounded-2xl mb-4">
                     <UserPlus className="w-8 h-8 text-green-600 dark:text-green-400" />

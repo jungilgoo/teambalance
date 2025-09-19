@@ -6,8 +6,8 @@ import { AuthProvider } from '@/components/providers/AuthProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: '롤 내전 매니저',
-  description: 'League of Legends 내전 팀 밸런싱 시스템',
+  title: 'Team Balance',
+  description: 'League of Legends 팀 밸런싱 시스템',
 }
 
 export const viewport = {

@@ -77,6 +77,11 @@ const SignUpForm = memo(function SignUpForm({
         )}
       </div>
 
+      {/* 개인정보 사용 안내 */}
+      <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+        이메일과 생년월일은 비밀번호 찾기에만 사용됩니다.
+      </p>
+
       {/* 닉네임 입력 (선택사항) */}
       <div className="space-y-2">
         <Input
@@ -112,7 +117,7 @@ const SignUpForm = memo(function SignUpForm({
         )}
 
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          닉네임은 회원가입 시 중복 여부가 확인됩니다. (나중에 설정 가능)
+          닉네임은 언제라도 변경 가능합니다.
         </p>
       </div>
 
@@ -125,10 +130,6 @@ const SignUpForm = memo(function SignUpForm({
         required
       />
 
-      {/* 개인정보 사용 안내 */}
-      <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-        이메일과 생년월일은 비밀번호 찾기에만 사용됩니다.
-      </p>
 
       {/* 전체 에러 메시지 */}
       {error && (

@@ -19,6 +19,7 @@ import TeamBalanceModal from '@/components/session/TeamBalanceModal'
 import MatchResultInputModal from '@/components/session/MatchResultInputModal'
 import InviteMemberModal from '@/components/team/InviteMemberModal'
 import { TierBadge } from '@/components/ui/tier-badge'
+import { MemberCard } from '@/components/ui/member-card'
 import { TierEditDialog } from '@/components/ui/tier-edit-dialog'
 import { TierType, Position } from '@/lib/types'
 import { PositionEditDialog } from '@/components/ui/position-edit-dialog'
@@ -477,92 +478,47 @@ export default function TeamDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {memberStatsWithWinRate.map((member) => {
                     // 해당 멤버의 주력 챔피언 찾기
                     const memberChampionStat = memberChampionStats.find(stat => stat.memberId === member.id);
                     const topChampion = memberChampionStat?.topChampion;
-                    const championImage = getChampionSplashArt(topChampion);
-                    const fallbackGradient = getChampionFallbackGradient(topChampion);
                     
                     return (
-                      <div key={member.id} className="relative overflow-hidden rounded-lg">
-                        {/* 챔피언 배경 이미지 또는 fallback 그라데이션 */}
-                        {championImage ? (
-                          <div 
-                            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                            style={{ 
-                              backgroundImage: `linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.45)), url(${championImage})`,
+                      <MemberCard
+                        key={member.id}
+                        member={member}
+                        currentUserId={authState.user?.id}
+                        isLeader={authState.user?.id === team?.leaderId}
+                        topChampion={topChampion}
+                        championPlayCount={memberChampionStat?.championPlayCount}
+                        onClick={() => {
+                          // 티어나 포지션 편집 모달을 열기 위한 클릭 핸들러 유지
+                          console.log('Member card clicked:', member.nickname)
+                        }}
+                        showActions={authState.user?.id === member.userId || isTeamLeader}
+                      >
+                        <div className="flex gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleTierBadgeClick(member)
                             }}
-                          />
-                        ) : (
-                          <div className={`absolute inset-0 bg-gradient-to-br ${fallbackGradient} opacity-20`} />
-                        )}
-                        
-                        {/* 멤버 카드 내용 */}
-                        <div className="relative p-4 border rounded-lg hover:bg-white/10 transition-colors">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex flex-wrap items-center gap-2 mb-2">
-                                <h3 className={`font-semibold text-lg break-words min-w-0 ${championImage ? 'text-white drop-shadow-lg' : ''}`}>
-                                  {member.nickname}
-                                </h3>
-                                
-                                {/* 주력 챔피언 표시 */}
-                                {topChampion && memberChampionStat && (
-                                  <span className="text-xs bg-black/40 text-white px-2 py-1 rounded-full backdrop-blur-sm">
-                                    주력: {topChampion} ({memberChampionStat.championPlayCount}게임)
-                                  </span>
-                                )}
-                                
-                                <button
-                                  onClick={() => handleTierBadgeClick(member)}
-                                  className="transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md flex-shrink-0"
-                                >
-                                  <TierBadge tier={member.tier} size="sm" />
-                                </button>
-                                {member.role === 'leader' && (
-                                  <Crown className="w-4 h-4 text-yellow-400 flex-shrink-0 drop-shadow-lg" />
-                                )}
-                              </div>
-                          
-                              <div className="space-y-3 text-sm">
-                                <div>
-                                  <div className={`mb-1 ${championImage ? 'text-gray-200' : 'text-muted-foreground'}`}>포지션</div>
-                                  <button
-                                    onClick={() => handlePositionBadgeClick(member)}
-                                    className={`font-medium transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md ${
-                                      championImage 
-                                        ? 'text-white hover:text-blue-300 drop-shadow' 
-                                        : 'hover:text-blue-600'
-                                    }`}
-                                  >
-                                    주: {positionNames[member.mainPosition]} / 부: {
-                                      member.subPositions && member.subPositions.length > 0 
-                                        ? member.subPositions.map(pos => positionNames[pos]).join(', ')
-                                        : '없음'
-                                    }
-                                  </button>
-                                </div>
-                                
-                                <div className="flex items-center gap-4 text-sm">
-                                  <div className={championImage ? 'text-gray-200' : 'text-muted-foreground'}>
-                                    티어점수: <span className={`font-medium ${championImage ? 'text-white' : 'text-foreground'}`}>{member.stats.tierScore}</span>
-                                  </div>
-                                  <div className={championImage ? 'text-gray-200' : 'text-muted-foreground'}>•</div>
-                                  <div className={championImage ? 'text-gray-200' : 'text-muted-foreground'}>
-                                    승률: <span className={`font-medium ${championImage ? 'text-green-300' : 'text-green-600'}`}>{member.winRate}%</span>
-                                  </div>
-                                  <div className={championImage ? 'text-gray-200' : 'text-muted-foreground'}>•</div>
-                                  <div className={championImage ? 'text-gray-200' : 'text-muted-foreground'}>
-                                    <span className={`font-medium ${championImage ? 'text-white' : 'text-foreground'}`}>{member.stats.totalWins}승 {member.stats.totalLosses}패</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                            className="flex-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 py-1 px-2 rounded transition-colors"
+                          >
+                            티어 편집
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handlePositionBadgeClick(member)
+                            }}
+                            className="flex-1 text-xs bg-green-50 hover:bg-green-100 text-green-700 py-1 px-2 rounded transition-colors"
+                          >
+                            포지션 편집
+                          </button>
                         </div>
-                      </div>
+                      </MemberCard>
                     );
                   })}
                 </div>
