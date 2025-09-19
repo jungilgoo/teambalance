@@ -60,13 +60,20 @@ export function MemberCard({
   topChampion
 }: MemberCardProps) {
   const MainPositionIcon = positionIcons[member.mainPosition]
-  const winRate = member.stats.totalWins + member.stats.totalLosses > 0
-    ? Math.round((member.stats.totalWins / (member.stats.totalWins + member.stats.totalLosses)) * 100)
+  const totalWins = member.stats?.totalWins ?? 0
+  const totalLosses = member.stats?.totalLosses ?? 0
+  const winRate = totalWins + totalLosses > 0
+    ? Math.round((totalWins / (totalWins + totalLosses)) * 100)
     : 0
 
-  const kda = member.stats.totalWins + member.stats.totalLosses > 0
-    ? ((member.stats.totalWins * 2.5) + (member.stats.totalLosses * 0.5)) / (member.stats.totalWins + member.stats.totalLosses)
-    : 2.0
+  // KDA는 실제 킬/데스/어시스트 데이터가 필요하지만, 현재는 승률을 기반으로 추정
+  // 승률과 멤버 ID를 기반으로 한 일관된 KDA 계산
+  const memberIdHash = member.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  const kda = totalWins + totalLosses > 0
+    ? winRate >= 70 ? 3.5 + (memberIdHash % 150) / 100 // 70% 이상: 3.5-5.0
+    : winRate >= 50 ? 2.0 + (winRate - 50) * 0.075 // 50-70%: 2.0-3.5
+    : 0.5 + winRate * 0.03 // 50% 이하: 0.5-2.0
+    : 1.0
 
   // 챔피언 배경 이미지 관련
   const championImage = getChampionSplashArt(topChampion)
@@ -128,10 +135,10 @@ export function MemberCard({
           </div>
 
           {/* MVP 배지 */}
-          {member.stats.mvpCount > 0 && (
+          {(member.stats?.mvpCount ?? 0) > 0 && (
             <div className="flex items-center gap-1 px-3 py-2 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-medium">
               <Trophy className="w-4 h-4" />
-              {member.stats.mvpCount}
+              {member.stats?.mvpCount ?? 0}
             </div>
           )}
         </div>
@@ -176,7 +183,7 @@ export function MemberCard({
           {/* 경기 수 */}
           <div className="text-center p-2 bg-white/70 rounded-lg border">
             <div className="text-lg font-bold text-gray-700">
-              {member.stats.totalWins + member.stats.totalLosses}
+              {totalWins + totalLosses}
             </div>
             <div className="text-xs text-gray-500">경기</div>
           </div>
@@ -184,7 +191,7 @@ export function MemberCard({
           {/* 티어 점수 */}
           <div className="text-center p-2 bg-white/70 rounded-lg border">
             <div className="text-lg font-bold text-purple-600">
-              {member.stats.tierScore}
+              {member.stats?.tierScore ?? 0}
             </div>
             <div className="text-xs text-gray-500">점수</div>
           </div>
@@ -196,7 +203,9 @@ export function MemberCard({
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Trophy className="w-3 h-3 text-yellow-600" />
-              <span className="font-bold text-yellow-700">{member.stats.mvpCount}</span>
+              <span className="font-bold text-yellow-700">
+                {member.stats?.mvpCount ?? 0}
+              </span>
             </div>
             <div className="text-gray-500">MVP</div>
           </div>
@@ -212,20 +221,20 @@ export function MemberCard({
           {/* 연승/연패 */}
           <div className="text-center">
             <div className="mb-1">
-              {member.stats.currentStreak === 0 ? (
+              {(member.stats?.currentStreak ?? 0) === 0 ? (
                 <span className="font-bold text-gray-600">-</span>
               ) : (
                 <span className={cn(
                   "font-bold",
-                  member.stats.currentStreak > 0 ? "text-green-600" : "text-red-500"
+                  (member.stats?.currentStreak ?? 0) > 0 ? "text-green-600" : "text-red-500"
                 )}>
-                  {Math.abs(member.stats.currentStreak)}
+                  {Math.abs(member.stats?.currentStreak ?? 0)}
                 </span>
               )}
             </div>
             <div className="text-gray-500">
-              {member.stats.currentStreak === 0 ? '보통' : 
-               member.stats.currentStreak > 0 ? '연승' : '연패'}
+              {(member.stats?.currentStreak ?? 0) === 0 ? '보통' : 
+               (member.stats?.currentStreak ?? 0) > 0 ? '연승' : '연패'}
             </div>
           </div>
         </div>
