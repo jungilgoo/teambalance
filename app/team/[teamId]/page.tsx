@@ -500,13 +500,13 @@ export default function TeamDashboard() {
                         }}
                         showActions={authState.user?.id === member.userId || !!isTeamLeader}
                       >
-                        <div className="flex gap-2">
+                        <>
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
                               handleTierBadgeClick(member)
                             }}
-                            className="flex-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 py-1 px-2 rounded transition-colors"
+                            className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 py-1 px-2 rounded transition-colors whitespace-nowrap"
                           >
                             티어 편집
                           </button>
@@ -515,11 +515,11 @@ export default function TeamDashboard() {
                               e.stopPropagation()
                               handlePositionBadgeClick(member)
                             }}
-                            className="flex-1 text-xs bg-green-50 hover:bg-green-100 text-green-700 py-1 px-2 rounded transition-colors"
+                            className="text-xs bg-green-50 hover:bg-green-100 text-green-700 py-1 px-2 rounded transition-colors whitespace-nowrap"
                           >
                             포지션 편집
                           </button>
-                        </div>
+                        </>
                       </MemberCard>
                     );
                   })}

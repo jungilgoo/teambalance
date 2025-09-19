@@ -108,8 +108,8 @@ export function MemberCard({
         }} />
       )}
 
-      {/* 카드 헤더 */}
-      <div className="relative p-4 pb-2">
+        {/* 카드 헤더 */}
+        <div className="relative p-5 pb-3">
         <div className="flex items-center justify-between mb-4">
           {/* 티어 + 닉네임 박스 */}
           <div className="relative">
@@ -134,17 +134,16 @@ export function MemberCard({
             )}
           </div>
 
-          {/* MVP 배지 */}
-          {(actualMvpCount !== undefined ? actualMvpCount : (member.stats?.mvpCount ?? 0)) > 0 && (
-            <div className="flex items-center gap-1 px-3 py-2 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-medium">
-              <Trophy className="w-4 h-4" />
-              {actualMvpCount !== undefined ? actualMvpCount : (member.stats?.mvpCount ?? 0)}
+          {/* 편집 버튼들 */}
+          {showActions && children && (
+            <div className="flex flex-col gap-1">
+              {children}
             </div>
           )}
         </div>
 
         {/* 포지션 정보 */}
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-4">
           <div className="flex items-center gap-1.5">
             <MainPositionIcon className={cn("w-5 h-5", positionColors[member.mainPosition])} />
             <span className="text-base font-semibold text-gray-800">
@@ -167,7 +166,7 @@ export function MemberCard({
         </div>
 
         {/* 통계 카드 */}
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-3 gap-2 mb-4">
           {/* 승률 */}
           <div className="text-center p-2 bg-white/70 rounded-lg border">
             <div className={cn(
@@ -244,12 +243,6 @@ export function MemberCard({
           </div>
         </div>
 
-        {/* 액션 버튼 영역 */}
-        {showActions && children && (
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            {children}
-          </div>
-        )}
       </div>
 
       {/* 카드 테두리 발광 효과 */}
