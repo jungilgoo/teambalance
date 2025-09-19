@@ -491,7 +491,6 @@ export default function TeamDashboard() {
                         currentUserId={authState.user?.id}
                         isLeader={authState.user?.id === team?.leaderId}
                         topChampion={topChampion}
-                        championPlayCount={memberChampionStat?.championPlayCount}
                         onClick={() => {
                           // 티어나 포지션 편집 모달을 열기 위한 클릭 핸들러 유지
                           console.log('Member card clicked:', member.nickname)

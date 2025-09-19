@@ -25,7 +25,6 @@ interface MemberCardProps {
   showActions?: boolean
   children?: React.ReactNode
   topChampion?: string | null
-  championPlayCount?: number
 }
 
 // 포지션별 아이콘 매핑
@@ -54,8 +53,7 @@ export function MemberCard({
   className,
   showActions = false,
   children,
-  topChampion,
-  championPlayCount
+  topChampion
 }: MemberCardProps) {
   const MainPositionIcon = positionIcons[member.mainPosition]
   const winRate = member.stats.totalWins + member.stats.totalLosses > 0
@@ -86,13 +84,13 @@ export function MemberCard({
       {/* 챔피언 배경 이미지 또는 티어 그라데이션 */}
       {championImage ? (
         <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60"
           style={{ 
-            backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.4)), url(${championImage})`,
+            backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.1)), url(${championImage})`,
           }}
         />
       ) : topChampion ? (
-        <div className={`absolute inset-0 bg-gradient-to-br ${fallbackGradient} opacity-15`} />
+        <div className={`absolute inset-0 bg-gradient-to-br ${fallbackGradient} opacity-25`} />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br opacity-5" style={{
           backgroundImage: getTierGradient(member.tier)
@@ -132,12 +130,6 @@ export function MemberCard({
                   <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
                     <Trophy className="w-3 h-3" />
                     {member.stats.mvpCount}
-                  </div>
-                )}
-                {topChampion && championPlayCount && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-blue-100/80 text-blue-700 rounded-full text-xs font-medium backdrop-blur-sm">
-                    <span>주력: {topChampion}</span>
-                    <span className="text-blue-500">({championPlayCount}게임)</span>
                   </div>
                 )}
               </div>
