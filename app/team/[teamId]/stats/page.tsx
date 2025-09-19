@@ -232,8 +232,8 @@ export default function TeamStatsPage() {
                             {member.totalGames}경기
                           </TableCell>
                           <TableCell className="text-right">
-                            <span className={memberKDAStats && memberKDAStats.averageKDA >= 2 ? 'text-blue-600 font-semibold' : 
-                                            memberKDAStats && memberKDAStats.averageKDA >= 1.5 ? 'text-green-600' : 'text-gray-600'}>
+                            <span className={memberKDAStats && memberKDAStats.averageKDA >= 3 ? 'text-green-600 font-semibold' : 
+                                            memberKDAStats && memberKDAStats.averageKDA >= 2 ? 'text-blue-600 font-semibold' : 'text-red-600'}>
                               {memberKDAStats ? memberKDAStats.averageKDA : '-'}
                             </span>
                           </TableCell>

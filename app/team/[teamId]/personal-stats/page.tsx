@@ -446,8 +446,8 @@ export default function PersonalStatsPage() {
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-muted-foreground">총 {teammate.totalGames}경기</span>
                         <span className={`font-semibold ${
-                          teammate.winRate >= 60 ? 'text-blue-600' :
-                          teammate.winRate >= 50 ? 'text-green-600' : 'text-red-600'
+                          teammate.winRate >= 70 ? 'text-green-600' :
+                          teammate.winRate >= 50 ? 'text-blue-600' : 'text-red-600'
                         }`}>
                           승률 {teammate.winRate}%
                         </span>
