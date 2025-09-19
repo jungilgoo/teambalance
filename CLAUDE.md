@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 개요
 
-**TeamBalance (롤내전매니저)** - 리그 오브 레전드 내전 관리 시스템
+**Team Balance** - 리그 오브 레전드 내전 관리 시스템
 - **목적**: 친구들끼리 LoL 내전 시 공정한 팀 구성과 전적 관리
 - **타겟**: 정기적으로 내전하는 100-200명 규모 그룹 (1인 개발자 관리)
 - **기술 스택**: Next.js 15, React 19, TypeScript, Supabase, Tailwind CSS, shadcn/ui

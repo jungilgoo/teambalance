@@ -207,17 +207,17 @@ function LoginContent() {
   }), [isSignUp, isForgotPassword, useBirthMethod])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100 dark:from-gray-900 dark:via-gray-800 dark:to-yellow-900/20">
       <div className="min-h-screen flex items-center justify-center mobile-container">
         <div className="w-full max-w-lg">
           
           {/* 로고 및 타이틀 */}
           <div className="text-center mb-6 sm:mb-12">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 dark:bg-blue-900 rounded-2xl mb-6">
-              <Gamepad2 className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-yellow-100 dark:bg-yellow-900 rounded-2xl mb-6">
+              <Gamepad2 className="w-10 h-10 text-yellow-600 dark:text-yellow-400" />
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-3">
-              롤 내전 매니저
+              Team Balance
             </h1>
             <p className="mobile-text-body text-gray-600 dark:text-gray-300 font-medium">
               공정한 팀 밸런싱으로<br />더 재미있는 내전을 경험하세요
