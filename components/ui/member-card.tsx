@@ -90,8 +90,7 @@ export function MemberCard({
       <div
         className={cn(
           "relative overflow-hidden rounded-xl border-2 bg-gradient-to-br from-white to-gray-50",
-          "shadow-lg hover:shadow-xl transition-all duration-500 cursor-pointer h-80",
-          "transform animate-pulse",
+          "shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer h-80",
           getTierBorderColor(member.tier),
           className
         )}
@@ -102,20 +101,11 @@ export function MemberCard({
         }}
       >
         {/* 뒷면 - 최근 5경기 */}
-        <div className="h-full p-5 flex flex-col">
-          {/* 뒷면 헤더 */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-yellow-600" />
-              <h3 className="font-bold text-gray-800">최근 경기</h3>
-            </div>
-            <div className="text-sm text-gray-500">{recentMatches.length}경기</div>
-          </div>
-
-          {/* 최근 경기 목록 */}
-          <div className="flex-1 space-y-3 overflow-y-auto">
+        <div className="h-full p-4 flex flex-col justify-center">
+          {/* 최근 경기 목록 - 컴팩트 버전 */}
+          <div className="space-y-2">
             {recentMatches.length > 0 ? (
-              recentMatches.map((match, index) => {
+              recentMatches.slice(0, 5).map((match, index) => {
                 const kda = match.deaths > 0 
                   ? ((match.kills + match.assists) / match.deaths).toFixed(1)
                   : `${match.kills + match.assists}.0`
@@ -124,55 +114,48 @@ export function MemberCard({
                   <div
                     key={`${match.matchId}-${index}`}
                     className={cn(
-                      "p-3 rounded-lg border-2 flex items-center justify-between",
+                      "px-3 py-2 rounded-md border flex items-center justify-between text-xs",
                       match.isWin 
                         ? "bg-blue-50 border-blue-200" 
                         : "bg-red-50 border-red-200"
                     )}
                   >
                     {/* 챔피언 & 결과 */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <div className={cn(
-                        "px-2 py-1 rounded text-xs font-bold",
+                        "px-1.5 py-0.5 rounded text-[10px] font-bold min-w-[28px] text-center",
                         match.isWin ? "bg-blue-500 text-white" : "bg-red-500 text-white"
                       )}>
-                        {match.isWin ? "승리" : "패배"}
+                        {match.isWin ? "승" : "패"}
                       </div>
-                      <div className="font-medium text-gray-800">
+                      <div className="font-medium text-gray-800 text-xs truncate max-w-[60px]">
                         {match.champion}
                       </div>
                     </div>
 
                     {/* KDA & MVP */}
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm text-gray-600">
+                    <div className="flex items-center gap-1.5">
+                      <div className="text-[11px] text-gray-600">
                         <span className="font-medium">{match.kills}</span>/
                         <span className="font-medium text-red-500">{match.deaths}</span>/
                         <span className="font-medium">{match.assists}</span>
-                        <span className="ml-1 text-gray-500">({kda})</span>
+                        <span className="ml-0.5 text-gray-500">({kda})</span>
                       </div>
                       {match.isMvp && (
-                        <Trophy className="w-4 h-4 text-yellow-500" />
+                        <Trophy className="w-3 h-3 text-yellow-500" />
                       )}
                     </div>
                   </div>
                 )
               })
             ) : (
-              <div className="flex-1 flex items-center justify-center text-gray-500">
+              <div className="flex items-center justify-center text-gray-500 h-40">
                 <div className="text-center">
-                  <Trophy className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">경기 기록이 없습니다</p>
+                  <Trophy className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">경기 기록이 없습니다</p>
                 </div>
               </div>
             )}
-          </div>
-
-          {/* 뒷면 하단 정보 */}
-          <div className="mt-4 pt-3 border-t border-gray-200">
-            <div className="text-center text-xs text-gray-500">
-              카드를 다시 클릭하면 기본 정보로 돌아갑니다
-            </div>
           </div>
         </div>
       </div>
