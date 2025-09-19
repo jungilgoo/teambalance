@@ -12,7 +12,7 @@ import { useTeamMembersRealtime } from '@/lib/hooks/useTeamMembersRealtime'
 import { calculateMemberTierScore } from '@/lib/stats'
 import { tierNames, positionNames } from '@/lib/utils'
 import { analyzeTeamFormation, recommendOptimalPositions, optimizedTeamBalancing, convertToLegacyFormat } from '@/lib/position-analysis'
-import { Users, Crown, RefreshCw, AlertTriangle, CheckCircle, Eye } from 'lucide-react'
+import { Users, Crown, RefreshCw, AlertTriangle, CheckCircle, Eye, Copy, Check } from 'lucide-react'
 import PositionCoverageDisplay from '@/components/ui/position-coverage-display'
 
 interface TeamBalanceModalProps {
@@ -40,6 +40,7 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [isBalancing, setIsBalancing] = useState(false)
   const [balancingMethod, setBalancingMethod] = useState<BalancingMethod>('smart')
+  const [isCopied, setIsCopied] = useState(false)
   const [balancedTeams, setBalancedTeams] = useState<{
     team1: SelectedMember[]
     team2: SelectedMember[]
@@ -265,6 +266,86 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
     setOpen(false)
     setSelectedMembers([])
     setBalancedTeams(null)
+    setIsCopied(false)
+  }
+
+  // 팀 밸런싱 결과를 텍스트로 포맷팅
+  const formatTeamBalanceResult = () => {
+    if (!balancedTeams) return ''
+
+    const getPositionFromAnalysis = (memberId: string, team: 'team1' | 'team2') => {
+      const assignments = team === 'team1' ? balancedTeams.positionAnalysis.team1Assignments : balancedTeams.positionAnalysis.team2Assignments
+      return assignments[memberId] || '미정'
+    }
+
+    const formatTeam = (team: SelectedMember[], teamName: string, teamMmr: number, teamKey: 'team1' | 'team2') => {
+      const teamEmoji = teamKey === 'team1' ? '🔵' : '🔴'
+      let result = `${teamEmoji} ${teamName} (평균 티어: ${teamMmr}점)\n`
+      
+      // 포지션 순서대로 정렬
+      const positionOrder = ['top', 'jungle', 'mid', 'adc', 'support']
+      const sortedMembers = [...team].sort((a, b) => {
+        const posA = getPositionFromAnalysis(a.id, teamKey)
+        const posB = getPositionFromAnalysis(b.id, teamKey)
+        const orderA = positionOrder.indexOf(posA)
+        const orderB = positionOrder.indexOf(posB)
+        return (orderA !== -1 ? orderA : 999) - (orderB !== -1 ? orderB : 999)
+      })
+
+      sortedMembers.forEach(member => {
+        const position = getPositionFromAnalysis(member.id, teamKey)
+        const positionName = positionNames[position as keyof typeof positionNames] || position
+        const tierScore = calculateMemberTierScore(member)
+        result += `- ${positionName}: ${member.nickname} (${tierScore}점)\n`
+      })
+      
+      return result
+    }
+
+    let result = '🏆 TeamBalance 팀 밸런싱 결과\n\n'
+    result += formatTeam(balancedTeams.team1, '블루팀', balancedTeams.team1MMR, 'team1')
+    result += '\n'
+    result += formatTeam(balancedTeams.team2, '레드팀', balancedTeams.team2MMR, 'team2')
+    result += '\n'
+    
+    const tierDiff = Math.abs(balancedTeams.team1MMR - balancedTeams.team2MMR)
+    const methodText = balancingMethod === 'smart' ? '스마트 최적화' : '랜덤 배정'
+    result += `💡 티어 점수 차이: ${tierDiff}점 (${methodText})\n`
+    
+    if (balancedTeams.positionFeasible) {
+      result += '✅ 포지션 구성 완료'
+    } else {
+      result += '⚠️ 포지션 부족 (유연한 운용 필요)'
+    }
+
+    return result
+  }
+
+  // 클립보드에 복사하기
+  const handleCopyToClipboard = async () => {
+    if (!balancedTeams) return
+    
+    try {
+      const formattedText = formatTeamBalanceResult()
+      await navigator.clipboard.writeText(formattedText)
+      setIsCopied(true)
+      
+      // 3초 후 복사 상태 초기화
+      setTimeout(() => {
+        setIsCopied(false)
+      }, 3000)
+    } catch (error) {
+      console.error('클립보드 복사 실패:', error)
+      // 폴백: 텍스트 선택 방식
+      const textArea = document.createElement('textarea')
+      textArea.value = formatTeamBalanceResult()
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), 3000)
+    }
   }
 
   return (
@@ -514,9 +595,26 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-center space-x-4">
+                <div className="flex justify-center space-x-3">
                   <Button variant="outline" onClick={balanceTeams} disabled={isBalancing}>
                     다시 밸런싱
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleCopyToClipboard}
+                    className={`min-w-[120px] ${isCopied ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300' : ''}`}
+                  >
+                    {isCopied ? (
+                      <div className="flex items-center space-x-1">
+                        <Check className="w-4 h-4" />
+                        <span>복사됨!</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-1">
+                        <Copy className="w-4 h-4" />
+                        <span>복사하기</span>
+                      </div>
+                    )}
                   </Button>
                   <Button onClick={handleClose}>
                     확인 완료
