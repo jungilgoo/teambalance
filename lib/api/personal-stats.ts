@@ -361,6 +361,17 @@ export interface MemberStatsForTeam {
   currentStreak: number
 }
 
+export interface RecentMatch {
+  matchId: string
+  champion: string
+  kills: number
+  deaths: number
+  assists: number
+  isWin: boolean
+  isMvp: boolean
+  createdAt: string
+}
+
 export const getTeamMembersStats = async (
   teamId: string
 ): Promise<MemberStatsForTeam[]> => {
@@ -699,6 +710,82 @@ export const getTeammateCompatibilityStats = async (
     return result
   } catch (error) {
     console.error('팀원 조합 통계 조회 실패:', error)
+    return []
+  }
+}
+
+/**
+ * 사용자의 최근 5경기 기록을 조회합니다
+ */
+export const getUserRecentMatches = async (
+  teamId: string,
+  userId: string
+): Promise<RecentMatch[]> => {
+  try {
+    if (!validateUUID(teamId) || !validateUUID(userId)) {
+      console.error('잘못된 ID 형식:', { teamId, userId })
+      return []
+    }
+
+    // 먼저 해당 팀에서 사용자의 팀 멤버 ID를 조회
+    const { data: teamMember, error: memberError } = await supabase
+      .from('team_members')
+      .select('id')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .single()
+
+    if (memberError || !teamMember) {
+      console.error('팀 멤버 조회 오류:', memberError)
+      return []
+    }
+
+    // 최근 5경기의 match_members 기록 조회
+    const { data: matchMembers, error: matchMembersError } = await supabase
+      .from('match_members')
+      .select(`
+        id,
+        match_id,
+        team_member_id,
+        team_side,
+        position,
+        champion,
+        kills,
+        deaths,
+        assists,
+        matches!inner(
+          id,
+          team_id,
+          winner,
+          mvp_member_id,
+          created_at
+        )
+      `)
+      .eq('team_member_id', (teamMember as any).id)
+      .eq('matches.team_id', teamId)
+      .order('matches(created_at)', { ascending: false })
+      .limit(5)
+
+    if (matchMembersError) {
+      console.error('매치 멤버 기록 조회 오류:', matchMembersError)
+      return []
+    }
+
+    // RecentMatch 형태로 변환
+    const recentMatches: RecentMatch[] = (matchMembers as any[] || []).map((record: any) => ({
+      matchId: record.match_id,
+      champion: record.champion,
+      kills: record.kills,
+      deaths: record.deaths,
+      assists: record.assists,
+      isWin: record.team_side === record.matches.winner,
+      isMvp: record.matches.mvp_member_id === (teamMember as any).id,
+      createdAt: record.matches.created_at
+    }))
+
+    return recentMatches
+  } catch (error) {
+    console.error('최근 경기 기록 조회 실패:', error)
     return []
   }
 }

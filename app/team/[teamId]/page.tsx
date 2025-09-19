@@ -11,7 +11,7 @@ import { getTeamById, getTeamMembers, getUserById, updateMemberTier, updateMembe
 import { calculateWinRate } from '@/lib/stats'
 import { positionNames } from '@/lib/utils'
 import { getChampionSplashArt, getChampionFallbackGradient } from '@/lib/champion-images'
-import { getTeamMembersStats, MemberStatsForTeam } from '@/lib/api/personal-stats'
+import { getTeamMembersStats, MemberStatsForTeam, getUserRecentMatches, RecentMatch } from '@/lib/api/personal-stats'
 import { Users, Crown, Plus, Play, BarChart3, Settings, History, Trophy, Wifi, WifiOff, User } from 'lucide-react'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { useTeamMembersRealtime } from '@/lib/hooks/useTeamMembersRealtime'
@@ -37,6 +37,7 @@ export default function TeamDashboard() {
   const [mvpLeader, setMvpLeader] = useState<{memberId: string, nickname: string, mvpCount: number} | null>(null)
   const [currentStreak, setCurrentStreak] = useState<{nickname: string, streak: number} | null>(null)
   const [memberChampionStats, setMemberChampionStats] = useState<MemberStatsForTeam[]>([])
+  const [memberRecentMatches, setMemberRecentMatches] = useState<Record<string, RecentMatch[]>>({})
   const [isLoading, setIsLoading] = useState(false)
 
   // 실시간 팀 멤버 관리 (항상 호출하여 Hook 순서 일관성 유지)
@@ -117,11 +118,25 @@ export default function TeamDashboard() {
 
         const mvp = mvpRanking.length > 0 && mvpRanking[0].mvpCount > 0 ? mvpRanking[0] : null
         
+        // 각 멤버의 최근 5경기 데이터 로드
+        const teamMembers = await getTeamMembers(teamId)
+        const recentMatchesData: Record<string, RecentMatch[]> = {}
+        
+        await Promise.all(
+          teamMembers.map(async (member) => {
+            if (member.status === 'active') {
+              const matches = await getUserRecentMatches(teamId, member.userId)
+              recentMatchesData[member.userId] = matches
+            }
+          })
+        )
+        
         setTeam(teamData)
         setTopRankings(rankings)
         setMvpLeader(mvp)
         setCurrentStreak(streak)
         setMemberChampionStats(championStatsData)
+        setMemberRecentMatches(recentMatchesData)
       } catch (error) {
         console.error('팀 페이지: 데이터 로드 오류:', error)
         router.push('/dashboard')
@@ -487,6 +502,7 @@ export default function TeamDashboard() {
                     // 해당 멤버의 주력 챔피언 및 실제 통계 찾기
                     const memberChampionStat = memberChampionStats.find(stat => stat.memberId === member.id);
                     const topChampion = memberChampionStat?.topChampion;
+                    const recentMatches = memberRecentMatches[member.userId] || [];
                     
                     return (
                       <MemberCard
@@ -498,6 +514,7 @@ export default function TeamDashboard() {
                         actualKDA={memberChampionStat?.averageKDA}
                         actualMvpCount={memberChampionStat?.mvpCount}
                         actualCurrentStreak={memberChampionStat?.currentStreak}
+                        recentMatches={recentMatches}
                         showActions={authState.user?.id === member.userId || !!isTeamLeader}
                       >
                         <>

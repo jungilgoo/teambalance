@@ -4,6 +4,7 @@ import { TeamMember, Position } from '@/lib/types'
 import { TierBadge } from '@/components/ui/tier-badge'
 import { positionNames, getTierColor, cn } from '@/lib/utils'
 import { getChampionSplashArt, getChampionFallbackGradient } from '@/lib/champion-images'
+import { RecentMatch } from '@/lib/api/personal-stats'
 import {
   Crown,
   Trophy,
@@ -19,6 +20,7 @@ import {
   Flame,
   Trees
 } from 'lucide-react'
+import { useState } from 'react'
 
 interface MemberCardProps {
   member: TeamMember
@@ -32,6 +34,7 @@ interface MemberCardProps {
   actualKDA?: number
   actualMvpCount?: number
   actualCurrentStreak?: number
+  recentMatches?: RecentMatch[]
 }
 
 // 포지션별 아이콘 매핑
@@ -63,8 +66,10 @@ export function MemberCard({
   topChampion,
   actualKDA,
   actualMvpCount,
-  actualCurrentStreak
+  actualCurrentStreak,
+  recentMatches = []
 }: MemberCardProps) {
+  const [isFlipped, setIsFlipped] = useState(false)
   const MainPositionIcon = positionIcons[member.mainPosition]
   const totalWins = member.stats?.totalWins ?? 0
   const totalLosses = member.stats?.totalLosses ?? 0
@@ -128,7 +133,7 @@ export function MemberCard({
 
             {/* 리더 크라운 */}
             {member.role === 'leader' && (
-              <div className="absolute -top-2 -right-1 w-7 h-7 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
+              <div className="absolute -top-2 -right-2 w-7 h-7 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
                 <Crown className="w-4 h-4 text-white" />
               </div>
             )}
@@ -136,7 +141,7 @@ export function MemberCard({
 
           {/* 편집 버튼들 */}
           {showActions && children && (
-            <div className="flex flex-col gap-1 relative z-10">
+            <div className="flex flex-col gap-1">
               {children}
             </div>
           )}
