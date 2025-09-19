@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -12,7 +12,7 @@ import { useTeamMembersRealtime } from '@/lib/hooks/useTeamMembersRealtime'
 import { calculateMemberTierScore } from '@/lib/stats'
 import { tierNames, positionNames } from '@/lib/utils'
 import { analyzeTeamFormation, recommendOptimalPositions, optimizedTeamBalancing, convertToLegacyFormat } from '@/lib/position-analysis'
-import { Users, Crown, RefreshCw, AlertTriangle, CheckCircle, Eye, Copy, Check } from 'lucide-react'
+import { Users, Crown, RefreshCw, AlertTriangle, CheckCircle, Eye, Copy, Check, Camera } from 'lucide-react'
 import PositionCoverageDisplay from '@/components/ui/position-coverage-display'
 
 interface TeamBalanceModalProps {
@@ -41,6 +41,8 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
   const [isBalancing, setIsBalancing] = useState(false)
   const [balancingMethod, setBalancingMethod] = useState<BalancingMethod>('smart')
   const [isCopied, setIsCopied] = useState(false)
+  const [isCapturing, setIsCapturing] = useState(false)
+  const resultRef = useRef<HTMLDivElement>(null)
   const [balancedTeams, setBalancedTeams] = useState<{
     team1: SelectedMember[]
     team2: SelectedMember[]
@@ -267,6 +269,7 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
     setSelectedMembers([])
     setBalancedTeams(null)
     setIsCopied(false)
+    setIsCapturing(false)
   }
 
   // 팀 밸런싱 결과를 텍스트로 포맷팅
@@ -345,6 +348,43 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
       document.body.removeChild(textArea)
       setIsCopied(true)
       setTimeout(() => setIsCopied(false), 3000)
+    }
+  }
+
+  // 결과 영역 스크린샷 저장
+  const handleCaptureScreenshot = async () => {
+    if (!balancedTeams || !resultRef.current) return
+    
+    setIsCapturing(true)
+    
+    try {
+      // 동적으로 html2canvas를 import (번들 크기 최적화)
+      const html2canvas = (await import('html2canvas')).default
+      
+      // 결과 영역만 캡처
+      const canvas = await html2canvas(resultRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2, // 고해상도
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        width: resultRef.current.offsetWidth,
+        height: resultRef.current.offsetHeight,
+      })
+      
+      // 캔버스를 이미지로 변환하여 다운로드
+      const link = document.createElement('a')
+      link.download = `팀밸런싱_${new Date().toLocaleDateString('ko-KR').replace(/\./g, '_')}.png`
+      link.href = canvas.toDataURL('image/png')
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+    } catch (error) {
+      console.error('스크린샷 생성 실패:', error)
+      alert('스크린샷 저장에 실패했습니다. 다시 시도해주세요.')
+    } finally {
+      setIsCapturing(false)
     }
   }
 
@@ -508,7 +548,7 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
 
           {/* 밸런싱 결과 */}
           {balancedTeams && (
-            <div className="space-y-4">
+            <div ref={resultRef} className="space-y-4 bg-white dark:bg-gray-900 p-6 rounded-lg border">
               <div className="flex items-center justify-center gap-2">
                 <h3 className="text-lg font-semibold">팀 밸런싱 결과</h3>
                 {balancedTeams.positionFeasible ? (
@@ -596,8 +636,23 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
                   </div>
                 </div>
                 <div className="flex justify-center space-x-3">
-                  <Button variant="outline" onClick={balanceTeams} disabled={isBalancing}>
-                    다시 밸런싱
+                  <Button
+                    variant="outline"
+                    onClick={handleCaptureScreenshot}
+                    disabled={isCapturing}
+                    className="min-w-[120px]"
+                  >
+                    {isCapturing ? (
+                      <div className="flex items-center space-x-1">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>저장 중...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-1">
+                        <Camera className="w-4 h-4" />
+                        <span>스크린샷</span>
+                      </div>
+                    )}
                   </Button>
                   <Button
                     variant="outline"
