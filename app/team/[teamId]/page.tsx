@@ -17,6 +17,7 @@ import TeamBalanceModal from '@/components/session/TeamBalanceModal'
 import MatchResultInputModal from '@/components/session/MatchResultInputModal'
 import InviteMemberModal from '@/components/team/InviteMemberModal'
 import { TierBadge } from '@/components/ui/tier-badge'
+import { MemberCard } from '@/components/ui/member-card'
 import { TierEditDialog } from '@/components/ui/tier-edit-dialog'
 import { TierType, Position } from '@/lib/types'
 import { PositionEditDialog } from '@/components/ui/position-edit-dialog'
@@ -472,56 +473,41 @@ export default function TeamDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {memberStatsWithWinRate.map((member) => (
-                    <div key={member.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <h3 className="font-semibold text-lg break-words min-w-0">{member.nickname}</h3>
-                            <button
-                              onClick={() => handleTierBadgeClick(member)}
-                              className="transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md flex-shrink-0"
-                            >
-                              <TierBadge tier={member.tier} size="sm" />
-                            </button>
-                            {member.role === 'leader' && (
-                              <Crown className="w-4 h-4 text-yellow-500 flex-shrink-0" />
-                            )}
-                          </div>
-                          
-                          <div className="space-y-3 text-sm">
-                            <div>
-                              <div className="text-muted-foreground mb-1">포지션</div>
-                              <button
-                                onClick={() => handlePositionBadgeClick(member)}
-                                className="font-medium hover:text-blue-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md"
-                              >
-                                주: {positionNames[member.mainPosition]} / 부: {
-                                  member.subPositions && member.subPositions.length > 0 
-                                    ? member.subPositions.map(pos => positionNames[pos]).join(', ')
-                                    : '없음'
-                                }
-                              </button>
-                            </div>
-                            
-                            <div className="flex items-center gap-4 text-sm">
-                              <div className="text-muted-foreground">
-                                티어점수: <span className="font-medium text-foreground">{member.stats.tierScore}</span>
-                              </div>
-                              <div className="text-muted-foreground">•</div>
-                              <div className="text-muted-foreground">
-                                승률: <span className="font-medium text-green-600">{member.winRate}%</span>
-                              </div>
-                              <div className="text-muted-foreground">•</div>
-                              <div className="text-muted-foreground">
-                                <span className="font-medium text-foreground">{member.stats.totalWins}승 {member.stats.totalLosses}패</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                    <MemberCard
+                      key={member.id}
+                      member={member}
+                      currentUserId={authState.user?.id}
+                      isLeader={authState.user?.id === team?.leaderId}
+                      onClick={() => {
+                        // 티어나 포지션 편집 모달을 열기 위한 클릭 핸들러 유지
+                        console.log('Member card clicked:', member.nickname)
+                      }}
+                      showActions={true}
+                    >
+                      {/* 티어와 포지션 편집 버튼 */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleTierBadgeClick(member)
+                          }}
+                          className="flex-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 py-1 px-2 rounded transition-colors"
+                        >
+                          티어 편집
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handlePositionBadgeClick(member)
+                          }}
+                          className="flex-1 text-xs bg-green-50 hover:bg-green-100 text-green-700 py-1 px-2 rounded transition-colors"
+                        >
+                          포지션 편집
+                        </button>
                       </div>
-                    </div>
+                    </MemberCard>
                   ))}
                 </div>
 
