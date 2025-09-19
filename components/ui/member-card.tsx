@@ -99,42 +99,37 @@ export function MemberCard({
 
       {/* 카드 헤더 */}
       <div className="relative p-4 pb-2">
-        <div className="flex items-start justify-between mb-3">
-          {/* 프로필 영역 */}
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              {/* 아바타 */}
-              <div className={cn(
-                "w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg",
-                "shadow-lg border-2 border-white",
-                getTierAvatarColor(member.tier)
-              )}>
-                {member.nickname.charAt(0)}
+        <div className="flex items-center justify-between mb-4">
+          {/* 티어 + 닉네임 박스 */}
+          <div className="relative">
+            <div className={cn(
+              "px-4 py-3 rounded-lg flex flex-col items-center justify-center text-white font-bold text-center min-w-[90px]",
+              "shadow-lg border-2 border-white/20",
+              getTierAvatarColor(member.tier)
+            )}>
+              <div className="text-xs font-bold opacity-90 leading-tight">
+                {member.tier?.toUpperCase().replace('_', ' ')}
               </div>
-
-              {/* 리더 크라운 */}
-              {member.role === 'leader' && (
-                <div className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
-                  <Crown className="w-3 h-3 text-white" />
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-lg text-gray-900 truncate">
+              <div className="text-sm font-bold leading-tight mt-1 truncate max-w-[80px]">
                 {member.nickname}
-              </h3>
-              <div className="flex items-center gap-2 mt-1">
-                <TierBadge tier={member.tier} size="sm" />
-                {member.stats.mvpCount > 0 && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-                    <Trophy className="w-3 h-3" />
-                    {member.stats.mvpCount}
-                  </div>
-                )}
               </div>
             </div>
+
+            {/* 리더 크라운 */}
+            {member.role === 'leader' && (
+              <div className="absolute -top-2 -right-2 w-7 h-7 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
+                <Crown className="w-4 h-4 text-white" />
+              </div>
+            )}
           </div>
+
+          {/* MVP 배지 */}
+          {member.stats.mvpCount > 0 && (
+            <div className="flex items-center gap-1 px-3 py-2 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-medium">
+              <Trophy className="w-4 h-4" />
+              {member.stats.mvpCount}
+            </div>
+          )}
         </div>
 
         {/* 포지션 정보 */}
