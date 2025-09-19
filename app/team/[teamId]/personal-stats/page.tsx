@@ -22,15 +22,18 @@ import {
   Crown,
   Target,
   Gamepad2,
-  TrendingUp
+  TrendingUp,
+  Users
 } from 'lucide-react'
 import {
   getUserPersonalStats,
   getUserChampionStats,
   getUserPositionChampionStats,
+  getTeammateCompatibilityStats,
   PersonalStats,
   ChampionStats,
-  PositionChampionStats
+  PositionChampionStats,
+  TeammateCompatibility
 } from '@/lib/api/personal-stats'
 
 export default function PersonalStatsPage() {
@@ -44,6 +47,7 @@ export default function PersonalStatsPage() {
   const [personalStats, setPersonalStats] = useState<PersonalStats | null>(null)
   const [championStats, setChampionStats] = useState<ChampionStats[]>([])
   const [positionChampionStats, setPositionChampionStats] = useState<PositionChampionStats[]>([])
+  const [teammateCompatibilityStats, setTeammateCompatibilityStats] = useState<TeammateCompatibility[]>([])
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [selectedMemberId, setSelectedMemberId] = useState<string>('')
   const [selectedMemberNickname, setSelectedMemberNickname] = useState<string>('')
@@ -51,15 +55,17 @@ export default function PersonalStatsPage() {
   // 선택된 멤버의 통계 데이터를 로드하는 함수
   const loadMemberStats = useCallback(async (memberId: string) => {
     try {
-      const [personalStatsData, championStatsData, positionStatsData] = await Promise.all([
+      const [personalStatsData, championStatsData, positionStatsData, teammateStatsData] = await Promise.all([
         getUserPersonalStats(teamId, memberId),
         getUserChampionStats(teamId, memberId),
-        getUserPositionChampionStats(teamId, memberId)
+        getUserPositionChampionStats(teamId, memberId),
+        getTeammateCompatibilityStats(teamId, memberId)
       ])
 
       setPersonalStats(personalStatsData)
       setChampionStats(championStatsData)
       setPositionChampionStats(positionStatsData)
+      setTeammateCompatibilityStats(teammateStatsData)
     } catch (error) {
       console.error('멤버 통계 로드 오류:', error)
     }
@@ -411,6 +417,43 @@ export default function PersonalStatsPage() {
                         ))}
                     </TableBody>
                   </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 팀 멤버 궁합 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                팀 멤버 궁합
+              </CardTitle>
+              <CardDescription>
+                다른 팀원과 함께 플레이한 성과
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {teammateCompatibilityStats.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  아직 다른 팀원과 함께한 경기가 없습니다
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {teammateCompatibilityStats.map((teammate) => (
+                    <div key={teammate.teammateId} className="flex justify-between items-center p-3 bg-accent/20 rounded-lg">
+                      <div className="font-medium">{teammate.teammateNickname}</div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-muted-foreground">총 {teammate.totalGames}경기</span>
+                        <span className={`font-semibold ${
+                          teammate.winRate >= 60 ? 'text-blue-600' :
+                          teammate.winRate >= 50 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          승률 {teammate.winRate}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
