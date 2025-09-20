@@ -143,6 +143,7 @@ export const championNameMap: Record<string, string> = {
   '케이틀린': 'Caitlyn',
   '케인': 'Kayn',
   '케일': 'Kayle',
+  '클레드': 'Kled',
   '코그모': 'KogMaw',
   '코르키': 'Corki',
   '크산테': 'KSante',

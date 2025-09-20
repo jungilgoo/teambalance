@@ -298,7 +298,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
                 onChange={(value) => updateTeamData(team, position, 'assists', value)}
                 placeholder="A"
                 min={0}
-                max={30}
+                max={50}
               />
             </div>
           </div>
@@ -351,7 +351,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           onChange={(value) => updateTeamData(team, position, 'assists', value)}
           placeholder="A"
           min={0}
-          max={30}
+          max={50}
         />
       </div>
     )
