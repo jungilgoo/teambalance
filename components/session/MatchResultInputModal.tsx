@@ -278,7 +278,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
                 onChange={(value) => updateTeamData(team, position, 'kills', value)}
                 placeholder="K"
                 min={0}
-                max={30}
+                max={50}
               />
             </div>
             <div className="space-y-2">
@@ -288,7 +288,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
                 onChange={(value) => updateTeamData(team, position, 'deaths', value)}
                 placeholder="D"
                 min={0}
-                max={30}
+                max={50}
               />
             </div>
             <div className="space-y-2">
@@ -335,7 +335,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           onChange={(value) => updateTeamData(team, position, 'kills', value)}
           placeholder="K"
           min={0}
-          max={30}
+          max={50}
         />
 
         <NumberWheel
@@ -343,7 +343,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           onChange={(value) => updateTeamData(team, position, 'deaths', value)}
           placeholder="D"
           min={0}
-          max={30}
+          max={50}
         />
 
         <NumberWheel
