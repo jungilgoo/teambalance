@@ -105,9 +105,6 @@ export function NumberWheel({
       setIsEditing(false)
       setIsOpen(false)
       inputRef.current?.blur()
-    } else if (e.key === 'Tab') {
-      // Tab 키 처리 - 기본 동작 허용하되 값은 저장
-      saveValue()
     }
   }
 
