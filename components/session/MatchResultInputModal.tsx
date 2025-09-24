@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -109,7 +109,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
   }
 
   // 팀 데이터 업데이트
-  const updateTeamData = (team: 'team1' | 'team2', position: Position, field: keyof PositionData, value: string | number) => {
+  const updateTeamData = useCallback((team: 'team1' | 'team2', position: Position, field: keyof PositionData, value: string | number) => {
     setTeamData(prev => ({
       ...prev,
       [team]: {
@@ -120,7 +120,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
         }
       }
     }))
-  }
+  }, [])
 
   // 팀 스왑 기능
   const handleTeamSwap = () => {
