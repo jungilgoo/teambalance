@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { MobileNumberInput } from '@/components/ui/mobile-number-input'
 import { useIsMobile } from '@/lib/hooks/useMediaQuery'
@@ -31,9 +31,6 @@ export function NumberWheel({
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  
-  // 이전 값을 추적하기 위한 ref 추가
-  const lastSavedValueRef = useRef(value)
 
   // 숫자 목록 생성
   const numbers = Array.from({ length: max - min + 1 }, (_, i) => min + i)
@@ -42,72 +39,47 @@ export function NumberWheel({
   useEffect(() => {
     if (!isEditing) {
       setInputValue(value.toString())
-      lastSavedValueRef.current = value
     }
   }, [value, isEditing])
 
-  // 값 저장 함수를 useCallback으로 메모이제이션
-  const saveValue = useCallback(() => {
-    const num = parseInt(inputValue)
-    if (!isNaN(num) && num >= min && num <= max) {
-      if (num !== lastSavedValueRef.current) {
-        onChange(num)
-        lastSavedValueRef.current = num
-      }
-    } else {
-      // 유효하지 않은 값이면 원래 값으로 되돌림
-      setInputValue(lastSavedValueRef.current.toString())
-    }
-  }, [inputValue, min, max, onChange])
-
-  // blur 이벤트 처리 (Tab 키로 이동 시)
-  const handleBlur = useCallback(() => {
-    if (isEditing) {
-      saveValue()
-      setIsEditing(false)
-      setIsOpen(false)
-    }
-  }, [isEditing, saveValue])
-
-  // 클릭 외부 영역 감지 - blur와 중복되지 않도록 수정
+  // 클릭 외부 영역 감지
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // 현재 컴포넌트 외부를 클릭했을 때만 처리
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        if (isEditing) {
-          // setTimeout을 사용하여 blur 이벤트와 충돌 방지
-          setTimeout(() => {
-            if (document.activeElement !== inputRef.current) {
-              saveValue()
-              setIsEditing(false)
-            }
-          }, 0)
+        // 편집 중이었다면 입력값을 저장
+        if (isEditing && inputValue !== value.toString()) {
+          const num = parseInt(inputValue)
+          if (!isNaN(num) && num >= min && num <= max) {
+            onChange(num)
+          } else {
+            // 유효하지 않은 값이면 원래 값으로 되돌림
+            setInputValue(value.toString())
+          }
         }
         setIsOpen(false)
+        setIsEditing(false)
       }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isEditing, saveValue])
+  }, [value, isEditing, inputValue, min, max, onChange])
 
   // 키보드 입력 처리
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      e.preventDefault()
-      saveValue()
+      const num = parseInt(inputValue)
+      if (!isNaN(num) && num >= min && num <= max) {
+        onChange(num)
+      }
       setIsEditing(false)
       setIsOpen(false)
       inputRef.current?.blur()
     } else if (e.key === 'Escape') {
-      e.preventDefault()
-      setInputValue(lastSavedValueRef.current.toString())
+      setInputValue(value.toString())
       setIsEditing(false)
       setIsOpen(false)
       inputRef.current?.blur()
-    } else if (e.key === 'Tab') {
-      // Tab 키 처리 - 기본 동작 허용하되 값은 저장
-      saveValue()
     }
   }
 
@@ -121,23 +93,21 @@ export function NumberWheel({
 
   // 마우스 휠 처리
   const handleWheel = (e: React.WheelEvent) => {
+    // 컴포넌트 위에서 휠 사용 시 항상 동작하도록 수정
+    // passive event listener 경고를 방지하기 위해 조건부로만 preventDefault 호출
     if (e.cancelable) {
       e.preventDefault()
     }
-
-    // 편집 중일 때는 휠 동작 비활성화
-    if (isEditing) return
 
     const delta = e.deltaY > 0 ? 1 : -1
     const newValue = Math.min(max, Math.max(min, value + delta))
     if (newValue !== value) {
       onChange(newValue)
       setInputValue(newValue.toString())
-      lastSavedValueRef.current = newValue
     }
 
-    // 시각적 피드백
-    if (!isOpen) {
+    // 편집 중이지 않고 휠로 값을 변경했을 때는 잠시 열어서 시각적 피드백 제공
+    if (!isEditing && !isOpen) {
       setIsOpen(true)
       setTimeout(() => setIsOpen(false), 300)
     }
@@ -149,8 +119,9 @@ export function NumberWheel({
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStart === null || !isOpen || isEditing) return
+    if (touchStart === null || !isOpen) return
     
+    // passive event listener 경고를 방지하기 위해 조건부로만 preventDefault 호출
     if (e.cancelable) {
       e.preventDefault()
     }
@@ -158,13 +129,12 @@ export function NumberWheel({
     const touchY = e.touches[0].clientY
     const diff = touchStart - touchY
     
-    if (Math.abs(diff) > 20) {
+    if (Math.abs(diff) > 20) { // 20px 이상 움직였을 때
       const delta = diff > 0 ? 1 : -1
       const newValue = Math.min(max, Math.max(min, value + delta))
       if (newValue !== value) {
         onChange(newValue)
         setInputValue(newValue.toString())
-        lastSavedValueRef.current = newValue
       }
       setTouchStart(touchY)
     }
@@ -184,21 +154,16 @@ export function NumberWheel({
   const handleFocus = () => {
     setIsEditing(true)
     setIsOpen(false)
-    // 포커스 시 전체 선택
-    setTimeout(() => {
-      inputRef.current?.select()
-    }, 0)
   }
 
   // 숫자 선택
   const selectNumber = (num: number) => {
     onChange(num)
     setInputValue(num.toString())
-    lastSavedValueRef.current = num
     setIsOpen(false)
   }
 
-  // 모바일에서는 + / - 버튼 사용
+  // 모바일에서는 + / - 버튼 사용, 데스크톱에서는 기존 휴 방식 사용
   if (isMobile) {
     return (
       <MobileNumberInput
@@ -241,7 +206,6 @@ export function NumberWheel({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
-          onBlur={handleBlur}
           placeholder={placeholder}
           className={`
             w-full bg-transparent outline-none text-center
@@ -254,7 +218,7 @@ export function NumberWheel({
       </div>
 
       {/* 드롭다운 목록 */}
-      {isOpen && !isEditing && (
+      {isOpen && (
         <div
           ref={dropdownRef}
           className="absolute top-full left-0 z-50 w-16 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-40 overflow-y-auto"
