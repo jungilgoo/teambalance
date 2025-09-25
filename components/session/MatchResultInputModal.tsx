@@ -415,7 +415,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
                   블루팀
                 </CardTitle>
               </CardHeader>
-              <CardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-3 space-y-2'}`}>
+              <CardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-2 space-y-1'}`}>
                 {positions.map(position => (
                   <PositionInput key={position} team="team1" position={position} />
                 ))}
@@ -430,7 +430,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
                   레드팀
                 </CardTitle>
               </CardHeader>
-              <CardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-3 space-y-2'}`}>
+              <CardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-2 space-y-1'}`}>
                 {positions.map(position => (
                   <PositionInput key={position} team="team2" position={position} />
                 ))}
