@@ -375,7 +375,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* 승리 팀 선택 */}
           <div className={`flex gap-4 justify-center ${isMobile ? 'flex-col' : ''}`}>
             <Button
@@ -405,7 +405,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           <Separator />
 
           {/* 팀별 입력 */}
-          <div className="grid grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 gap-4">
 
             {/* 블루팀 */}
             <Card className="border-blue-200 dark:border-blue-800">
@@ -415,7 +415,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
                   블루팀
                 </CardTitle>
               </CardHeader>
-              <CardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-4 space-y-3'}`}>
+              <CardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-3 space-y-2'}`}>
                 {positions.map(position => (
                   <PositionInput key={position} team="team1" position={position} />
                 ))}
@@ -430,7 +430,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
                   레드팀
                 </CardTitle>
               </CardHeader>
-              <CardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-4 space-y-3'}`}>
+              <CardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-3 space-y-2'}`}>
                 {positions.map(position => (
                   <PositionInput key={position} team="team2" position={position} />
                 ))}
