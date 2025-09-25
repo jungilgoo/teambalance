@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { MatchResultCard, MatchResultCardContent, MatchResultCardHeader, MatchResultCardTitle } from '@/components/ui/match-result-card'
 import { Separator } from '@/components/ui/separator'
 import { MemberSelect } from '@/components/ui/member-select'
 import { ChampionSelect } from '@/components/ui/champion-select'
@@ -408,34 +408,34 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           <div className="grid grid-cols-1 gap-2">
 
             {/* 블루팀 */}
-            <Card className="border-blue-200 dark:border-blue-800">
-              <CardHeader className="bg-blue-50 dark:bg-blue-900/20" py-2>
-                <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+            <MatchResultCard className="border-blue-200 dark:border-blue-800">
+              <MatchResultCardHeader className="bg-blue-50 dark:bg-blue-900/20">
+                <MatchResultCardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
                   <Users className="w-5 h-5" />
                   블루팀
-                </CardTitle>
-              </CardHeader>
-              <CardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-2 space-y-1'}`}>
+                </MatchResultCardTitle>
+              </MatchResultCardHeader>
+              <MatchResultCardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-2 space-y-1'}`}>
                 {positions.map(position => (
                   <PositionInput key={position} team="team1" position={position} />
                 ))}
-              </CardContent>
-            </Card>
+              </MatchResultCardContent>
+            </MatchResultCard>
 
             {/* 레드팀 */}
-            <Card className="border-red-200 dark:border-red-800">
-              <CardHeader className="bg-red-50 dark:bg-red-900/20" py-2>
-                <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-300">
+            <MatchResultCard className="border-red-200 dark:border-red-800">
+              <MatchResultCardHeader className="bg-red-50 dark:bg-red-900/20">
+                <MatchResultCardTitle className="flex items-center gap-2 text-red-700 dark:text-red-300">
                   <Users className="w-5 h-5" />
                   레드팀
-                </CardTitle>
-              </CardHeader>
-              <CardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-2 space-y-1'}`}>
+                </MatchResultCardTitle>
+              </MatchResultCardHeader>
+              <MatchResultCardContent className={`${isMobile ? 'p-3 space-y-4' : 'p-2 space-y-1'}`}>
                 {positions.map(position => (
                   <PositionInput key={position} team="team2" position={position} />
                 ))}
-              </CardContent>
-            </Card>
+              </MatchResultCardContent>
+            </MatchResultCard>
           </div>
 
           {/* 버튼들 */}
