@@ -308,7 +308,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
 
     // 데스크톱: 기존 그리드 레이아웃 유지
     return (
-      <div className="grid grid-cols-6 gap-2 items-center p-3 bg-white dark:bg-gray-800 rounded-lg border">
+      <div className="grid grid-cols-6 gap-2 items-center p-2 bg-white dark:bg-gray-800 rounded-lg border">
         <div className="flex items-center gap-1 text-sm font-medium">
           <span>{positionIcons[position]}</span>
           <span>{positionNames[position]}</span>
@@ -375,7 +375,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-2">
           {/* 승리 팀 선택 */}
           <div className={`flex gap-4 justify-center ${isMobile ? 'flex-col' : ''}`}>
             <Button
@@ -405,7 +405,7 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           <Separator />
 
           {/* 팀별 입력 */}
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-2">
 
             {/* 블루팀 */}
             <Card className="border-blue-200 dark:border-blue-800">
