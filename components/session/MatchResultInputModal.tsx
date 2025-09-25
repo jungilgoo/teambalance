@@ -330,29 +330,42 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
           className="h-10 text-sm"
         />
 
-        <NumberWheel
-          value={positionData.kills}
-          onChange={(value) => updateTeamData(team, position, 'kills', value)}
-          placeholder="K"
-          min={0}
-          max={30}
-        />
+        {/* KDA 입력 섹션 */}
+        <div className="flex items-center gap-1">
+          <span className="text-xs font-medium text-muted-foreground min-w-[12px]">K</span>
+          <NumberWheel
+            value={positionData.kills}
+            onChange={(value) => updateTeamData(team, position, 'kills', value)}
+            placeholder="0"
+            min={0}
+            max={30}
+            className="flex-1"
+          />
+        </div>
 
-        <NumberWheel
-          value={positionData.deaths}
-          onChange={(value) => updateTeamData(team, position, 'deaths', value)}
-          placeholder="D"
-          min={0}
-          max={30}
-        />
+        <div className="flex items-center gap-1">
+          <span className="text-xs font-medium text-muted-foreground min-w-[12px]">D</span>
+          <NumberWheel
+            value={positionData.deaths}
+            onChange={(value) => updateTeamData(team, position, 'deaths', value)}
+            placeholder="0"
+            min={0}
+            max={30}
+            className="flex-1"
+          />
+        </div>
 
-        <NumberWheel
-          value={positionData.assists}
-          onChange={(value) => updateTeamData(team, position, 'assists', value)}
-          placeholder="A"
-          min={0}
-          max={50}
-        />
+        <div className="flex items-center gap-1">
+          <span className="text-xs font-medium text-muted-foreground min-w-[12px]">A</span>
+          <NumberWheel
+            value={positionData.assists}
+            onChange={(value) => updateTeamData(team, position, 'assists', value)}
+            placeholder="0"
+            min={0}
+            max={50}
+            className="flex-1"
+          />
+        </div>
       </div>
     )
   }
