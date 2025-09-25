@@ -409,8 +409,8 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
 
             {/* 블루팀 */}
             <Card className="border-blue-200 dark:border-blue-800">
-              <CardHeader className="bg-blue-50 dark:bg-blue-900/20">
-                <CardTitle className="flex items-center gap-1 text-blue-700 dark:text-blue-300">
+              <CardHeader className="bg-blue-50 dark:bg-blue-900/20" py-2>
+                <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
                   <Users className="w-5 h-5" />
                   블루팀
                 </CardTitle>
@@ -424,8 +424,8 @@ export default function MatchResultInputModal({ teamId, currentUserId }: MatchRe
 
             {/* 레드팀 */}
             <Card className="border-red-200 dark:border-red-800">
-              <CardHeader className="bg-red-50 dark:bg-red-900/20">
-                <CardTitle className="flex items-center gap-1 text-red-700 dark:text-red-300">
+              <CardHeader className="bg-red-50 dark:bg-red-900/20" py-2>
+                <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-300">
                   <Users className="w-5 h-5" />
                   레드팀
                 </CardTitle>
