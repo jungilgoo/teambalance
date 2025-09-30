@@ -234,20 +234,39 @@ export const calculateKillParticipation = (
   return ((playerKills + playerAssists) / teamTotalKills) * 100
 }
 
-// MVP 점수 계산 (KDA 60% + 킬관여도 40%)
+// 포지션별 킬관여도 가중치
+const POSITION_KILL_PARTICIPATION_WEIGHTS: Record<string, number> = {
+  'top': 1.1,      // 탑: 킬에 더 많이 기여
+  'jungle': 0.9,   // 정글: 킬에 덜 기여 (갱킹은 하지만 직접 킬은 적음)
+  'mid': 1.0,      // 미드: 기본 가중치
+  'adc': 1.0,      // 원딜: 기본 가중치
+  'support': 1.0   // 서포터: 기본 가중치
+}
+
+// MVP 점수 계산 (KDA 60% + 포지션별 가중치 적용 킬관여도 40%)
 export const calculateMVPScore = (
   player: MatchMemberResult, 
   teamTotalKills: number
 ): number => {
   const kda = (player.kills + player.assists) / Math.max(player.deaths, 1)
-  const killParticipation = calculateKillParticipation(
+  const baseKillParticipation = calculateKillParticipation(
     player.kills, 
     player.assists, 
     teamTotalKills
   )
   
-  // KDA 60% + 킬관여도 40% 가중 평균
-  return (kda * 0.6) + (killParticipation * 0.4)
+  // 포지션별 가중치 적용
+  const positionWeight = POSITION_KILL_PARTICIPATION_WEIGHTS[player.position] || 1.0
+  const adjustedKillParticipation = baseKillParticipation * positionWeight
+  
+  // KDA와 킬관여도를 0-10 스케일로 정규화 후 가중 평균
+  // KDA 정규화: 로그20 스케일 사용 (KDA 1.0 = 0점, KDA 20.0 = 10점)
+  const normalizedKDA = Math.min(Math.log(Math.max(kda, 1)) / Math.log(20) * 10, 10)
+  // 킬관여도 정규화: 킬관여도 100% = 10점
+  const normalizedKillParticipation = Math.min(adjustedKillParticipation / 10, 10)
+  
+  // 정규화된 값으로 60:40 비중 적용
+  return (normalizedKDA * 0.6) + (normalizedKillParticipation * 0.4)
 }
 
 // 경기에서 승리팀 MVP 계산
