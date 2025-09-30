@@ -261,11 +261,16 @@ export default function TeamDashboard() {
 
   // 모든 Hook은 조건부 return 이전에 선언되어야 함
   const memberStatsWithWinRate = useMemo(() => {
-    // 멤버별 승률을 미리 계산하여 렌더링 성능 향상
-    return members.map(member => ({
-      ...member,
-      winRate: calculateWinRate(member.stats.totalWins, member.stats.totalLosses)
-    }))
+    // 멤버별 승률을 미리 계산하고 티어순으로 정렬
+    return members
+      .map(member => ({
+        ...member,
+        winRate: calculateWinRate(member.stats.totalWins, member.stats.totalLosses)
+      }))
+      .sort((a, b) => {
+        // 티어 점수 기준으로 내림차순 정렬 (높은 티어가 먼저)
+        return b.stats.tierScore - a.stats.tierScore
+      })
   }, [members])
 
   if (authLoading || isLoading || membersLoading || !authState.isAuthenticated) {
