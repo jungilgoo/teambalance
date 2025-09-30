@@ -464,6 +464,39 @@ export function optimizeTeamSplit(
   return bestSplit
 }
 
+// 팀의 포지션 충족도 계산 (주포지션 1명 이상 OR 부포지션 2명 이상)
+function isPositionSufficient(team: TeamMember[], position: Position): boolean {
+  // 서포터는 항상 충분하다고 간주
+  if (position === 'support') {
+    return true
+  }
+
+  let mainPositionCount = 0
+  let subPositionCount = 0
+
+  for (const member of team) {
+    if (member.mainPosition === position) {
+      mainPositionCount++
+    } else if (member.subPositions.includes(position)) {
+      subPositionCount++
+    }
+  }
+
+  // 주포지션 1명 이상 OR 부포지션 2명 이상
+  return mainPositionCount >= 1 || subPositionCount >= 2
+}
+
+// 팀에서 부족한 포지션들 반환
+function getInsufficientPositions(team: TeamMember[]): Position[] {
+  const positions: Position[] = ['top', 'jungle', 'mid', 'adc', 'support']
+  return positions.filter(pos => !isPositionSufficient(team, pos))
+}
+
+// 멤버가 특정 포지션을 할 수 있는지 확인
+function canPlayPosition(member: TeamMember, position: Position): boolean {
+  return member.mainPosition === position || member.subPositions.includes(position)
+}
+
 // 드래프트 방식 밸런싱 알고리즘
 export function draftBalancingAlgorithm(members: TeamMember[], captain1?: TeamMember, captain2?: TeamMember): SimpleBalancingResult {
   console.log('드래프트 방식 밸런싱 알고리즘 시작')
@@ -501,68 +534,57 @@ export function draftBalancingAlgorithm(members: TeamMember[], captain1?: TeamMe
       console.log(`자동 주장 선정: ${selectedCaptain1.nickname}(${calculateMemberTierScore(selectedCaptain1)}점), ${selectedCaptain2.nickname}(${calculateMemberTierScore(selectedCaptain2)}점)`)
     }
 
-    // 2단계: 주포지션별 멤버 수 분석
-    const positionCount: Record<string, TeamMember[]> = {
-      top: [],
-      jungle: [],
-      mid: [],
-      adc: [],
-      support: []
-    }
-
-    members.forEach(member => {
-      if (positionCount[member.mainPosition]) {
-        positionCount[member.mainPosition].push(member)
-      }
-    })
-
-    // 포지션별 부족도 계산 (2명 미만이면 부족, 서포터는 제외)
-    const positionScarcity: Record<string, number> = {}
-    Object.entries(positionCount).forEach(([position, members]) => {
-      if (position !== 'support') {
-        positionScarcity[position] = Math.max(0, 2 - members.length)
-      } else {
-        positionScarcity[position] = 0 // 서포터는 부족도 계산에서 제외
-      }
-    })
-
-    console.log('포지션별 부족도:', positionScarcity)
-
-    // 3단계: 드래프트 우선순위 계산
-    const getDraftPriority = (member: TeamMember): number => {
-      const tierScore = calculateMemberTierScore(member)
-      const scarcity = positionScarcity[member.mainPosition] || 0
-      
-      // 포지션 부족도가 높을수록 우선순위 높음 (1000점 보너스)
-      // 티어 점수는 기본 우선순위
-      return tierScore + (scarcity * 1000)
-    }
-
-    // 주장 제외한 나머지 멤버들을 우선순위 순으로 정렬
-    const remainingMembers = members.filter(m => 
-      m.id !== selectedCaptain1.id && m.id !== selectedCaptain2.id
-    ).sort((a, b) => getDraftPriority(b) - getDraftPriority(a))
-
-    console.log('드래프트 우선순위:', remainingMembers.map(m => 
-      `${m.nickname}(${m.mainPosition}, ${getDraftPriority(m)}점)`
-    ))
-
-    // 4단계: 스네이크 드래프트 실행
+    // 2단계: 스네이크 드래프트 실행
     const team1: TeamMember[] = [selectedCaptain1]
     const team2: TeamMember[] = [selectedCaptain2]
+    const remainingMembers = members.filter(m => 
+      m.id !== selectedCaptain1.id && m.id !== selectedCaptain2.id
+    )
     
-    // 스네이크 패턴: A-B-B-A-A-B-B-A-A-B
-    for (let i = 0; i < remainingMembers.length; i++) {
-      const pickNumber = i + 3 // 3픽부터 시작 (1픽, 2픽은 주장)
-      const isTeam1Pick = pickNumber % 4 === 1 || pickNumber % 4 === 0
+    // 스네이크 패턴: A-B-B-A-A-B-B-A (총 8픽)
+    const pickOrder = [1, 2, 2, 1, 1, 2, 2, 1] // 1=팀1, 2=팀2
+    
+    for (let pickIndex = 0; pickIndex < pickOrder.length; pickIndex++) {
+      const isTeam1Pick = pickOrder[pickIndex] === 1
+      const currentTeam = isTeam1Pick ? team1 : team2
+      const pickNumber = pickIndex + 3 // 3픽부터 시작
       
-      if (isTeam1Pick) {
-        team1.push(remainingMembers[i])
-        console.log(`${pickNumber}픽: ${remainingMembers[i].nickname} → 팀1`)
-      } else {
-        team2.push(remainingMembers[i])
-        console.log(`${pickNumber}픽: ${remainingMembers[i].nickname} → 팀2`)
-      }
+      // 현재 팀에서 부족한 포지션 확인
+      const insufficientPositions = getInsufficientPositions(currentTeam)
+      
+      // 남은 선수들을 평가
+      const candidates = remainingMembers.map(member => {
+        const tierScore = calculateMemberTierScore(member)
+        
+        // 부족한 포지션을 채울 수 있는 선수인지 확인
+        const canFillInsufficient = insufficientPositions.some(pos => 
+          canPlayPosition(member, pos)
+        )
+        
+        // 우선순위 계산: 부족한 포지션을 채울 수 있으면 보너스
+        const priority = canFillInsufficient ? tierScore + 10000 : tierScore
+        
+        return { member, tierScore, priority, canFillInsufficient }
+      })
+      
+      // 우선순위가 높은 순으로 정렬
+      candidates.sort((a, b) => b.priority - a.priority)
+      
+      // 최고 우선순위 선수 선택
+      const selectedCandidate = candidates[0]
+      const selectedMember = selectedCandidate.member
+      
+      // 팀에 추가
+      currentTeam.push(selectedMember)
+      
+      // 남은 선수 목록에서 제거
+      const memberIndex = remainingMembers.findIndex(m => m.id === selectedMember.id)
+      remainingMembers.splice(memberIndex, 1)
+      
+      console.log(
+        `${pickNumber}픽: ${selectedMember.nickname}(${selectedMember.mainPosition}, ${selectedCandidate.tierScore}점) → 팀${pickOrder[pickIndex]}` +
+        (selectedCandidate.canFillInsufficient ? ` [부족 포지션 충족]` : '')
+      )
     }
 
     // 각 팀의 총 점수 계산
