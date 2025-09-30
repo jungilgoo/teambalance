@@ -40,14 +40,8 @@ export const analyzeSideWinRate = async (teamId: string): Promise<SideWinRateAna
     // 팀의 모든 경기 결과 조회
     const { data: matches, error: matchesError } = await supabase
       .from('matches')
-      .select(`
-        id,
-        result,
-        team1_member_ids,
-        team2_member_ids
-      `)
+      .select('id, winner')
       .eq('team_id', teamId)
-      .not('result', 'is', null)
 
     if (matchesError) {
       console.error('경기 데이터 조회 오류:', matchesError)
@@ -71,10 +65,10 @@ export const analyzeSideWinRate = async (teamId: string): Promise<SideWinRateAna
     for (const match of matches) {
       const matchData = match as any
       
-      // result가 'team1'이면 팀1 승리, 'team2'이면 팀2 승리
-      if (matchData.result === 'team1') {
+      // winner가 'team1'이면 블루팀(team1) 승리, 'team2'이면 레드팀(team2) 승리
+      if (matchData.winner === 'team1') {
         blueTeamWins++
-      } else if (matchData.result === 'team2') {
+      } else if (matchData.winner === 'team2') {
         redTeamWins++
       }
     }
@@ -107,25 +101,23 @@ export const analyzeTopChampions = async (teamId: string, limit: number = 10): P
       return []
     }
 
-    // 팀의 모든 경기에서 챔피언 픽 정보 조회
-    const { data: matches, error: matchesError } = await supabase
-      .from('matches')
+    // match_members 테이블에서 챔피언 픽 정보 조회
+    const { data: matchMembers, error: matchMembersError } = await supabase
+      .from('match_members')
       .select(`
-        id,
-        result,
-        team1_champions,
-        team2_champions
+        champion,
+        team_side,
+        match_id,
+        matches!inner(team_id, winner)
       `)
-      .eq('team_id', teamId)
-      .not('team1_champions', 'is', null)
-      .not('team2_champions', 'is', null)
+      .eq('matches.team_id', teamId)
 
-    if (matchesError) {
-      console.error('챔피언 데이터 조회 오류:', matchesError)
+    if (matchMembersError) {
+      console.error('챔피언 데이터 조회 오류:', matchMembersError)
       return []
     }
 
-    if (!matches || matches.length === 0) {
+    if (!matchMembers || matchMembers.length === 0) {
       return []
     }
 
@@ -135,52 +127,39 @@ export const analyzeTopChampions = async (teamId: string, limit: number = 10): P
       totalWins: number
     }>()
 
-    // 각 경기에서 챔피언 픽과 승패 분석
-    for (const match of matches) {
-      const matchData = match as any
+    // 각 멤버의 챔피언 픽과 승패 분석
+    for (const member of matchMembers) {
+      const memberData = member as any
+      const champion = memberData.champion
+      const teamSide = memberData.team_side
+      const winner = memberData.matches?.winner
       
-      // 팀1 (블루팀) 챔피언들
-      if (matchData.team1_champions) {
-        const team1Champions = matchData.team1_champions as Record<string, string>
-        const isTeam1Winner = matchData.result === 'team1'
+      if (champion && champion !== '') {
+        const stats = championStats.get(champion) || { totalPicks: 0, totalWins: 0 }
+        stats.totalPicks++
         
-        Object.values(team1Champions).forEach(championId => {
-          if (championId && championId !== '') {
-            const stats = championStats.get(championId) || { totalPicks: 0, totalWins: 0 }
-            stats.totalPicks++
-            if (isTeam1Winner) stats.totalWins++
-            championStats.set(championId, stats)
-          }
-        })
-      }
-
-      // 팀2 (레드팀) 챔피언들
-      if (matchData.team2_champions) {
-        const team2Champions = matchData.team2_champions as Record<string, string>
-        const isTeam2Winner = matchData.result === 'team2'
+        // 해당 멤버가 속한 팀이 이겼는지 확인
+        if (teamSide === winner) {
+          stats.totalWins++
+        }
         
-        Object.values(team2Champions).forEach(championId => {
-          if (championId && championId !== '') {
-            const stats = championStats.get(championId) || { totalPicks: 0, totalWins: 0 }
-            stats.totalPicks++
-            if (isTeam2Winner) stats.totalWins++
-            championStats.set(championId, stats)
-          }
-        })
+        championStats.set(champion, stats)
       }
     }
 
-    const totalGames = matches.length
+    // 총 경기 수 계산 (고유한 match_id 개수)
+    const uniqueMatches = new Set(matchMembers.map((m: any) => m.match_id))
+    const totalGames = uniqueMatches.size
 
     // 챔피언 통계를 배열로 변환하고 정렬
     const championMetaStats: ChampionMetaStats[] = Array.from(championStats.entries())
-      .map(([championId, stats]) => ({
-        championId,
-        championName: getChampionName(championId),
+      .map(([championName, stats]) => ({
+        championId: championName,
+        championName: championName,
         totalPicks: stats.totalPicks,
         totalWins: stats.totalWins,
-        winRate: Math.round((stats.totalWins / stats.totalPicks) * 100),
-        pickRate: Math.round((stats.totalPicks / (totalGames * 10)) * 100) // 전체 픽 중 비율
+        winRate: stats.totalPicks > 0 ? Math.round((stats.totalWins / stats.totalPicks) * 100) : 0,
+        pickRate: totalGames > 0 ? Math.round((stats.totalPicks / (totalGames * 10)) * 100) : 0 // 전체 픽 중 비율
       }))
       .sort((a, b) => b.totalPicks - a.totalPicks) // 픽 횟수 순으로 정렬
       .slice(0, limit)
@@ -219,38 +198,3 @@ export const getTeamMetaAnalysis = async (teamId: string): Promise<TeamMetaAnaly
   }
 }
 
-/**
- * 챔피언 ID를 이름으로 변환하는 헬퍼 함수
- */
-function getChampionName(championId: string): string {
-  // 실제 챔피언 이름이 저장되어 있다면 그대로 사용
-  if (championId && championId.length > 2) {
-    return championId
-  }
-  
-  // 숫자 ID인 경우 기본 챔피언 이름 반환
-  const defaultChampionNames: Record<string, string> = {
-    '1': '애니',
-    '2': '올라프', 
-    '3': '갈리오',
-    '4': '트위스티드 페이트',
-    '5': '신 짜오',
-    '6': '우르곳',
-    '7': '르블랑',
-    '8': '블라디미르',
-    '9': '피들스틱',
-    '10': '케일',
-    '11': '마스터 이',
-    '12': '알리스타',
-    '13': '라이즈',
-    '14': '사이온',
-    '15': '시비르',
-    '16': '소라카',
-    '17': '티모',
-    '18': '트리스타나',
-    '19': '워윅',
-    '20': '누누와 윌럼프'
-  }
-
-  return defaultChampionNames[championId] || `챔피언 ${championId}`
-}
