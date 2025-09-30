@@ -934,7 +934,7 @@ export const getTopRankings = async (teamId: string): Promise<Array<{
     }
 
     // 승률 계산 후 정렬
-    return members
+    const membersWithStats = members
       .map((member: any) => {
         const totalGames = member.total_wins + member.total_losses
         const winRate = totalGames > 0 ? Math.round((member.total_wins / totalGames) * 100) : 0
@@ -946,6 +946,16 @@ export const getTopRankings = async (teamId: string): Promise<Array<{
         }
       })
       .filter((member: any) => member.totalGames > 0) // 경기 기록이 있는 멤버만
+
+    // 경기수 5판 이상인 멤버가 있는지 확인
+    const hasMembersWith5PlusGames = membersWithStats.some((member: any) => member.totalGames >= 5)
+    
+    // 경기수 5판 이상인 멤버가 있으면, 5판 미만인 멤버는 랭킹에서 제외
+    const eligibleMembers = hasMembersWith5PlusGames 
+      ? membersWithStats.filter((member: any) => member.totalGames >= 5)
+      : membersWithStats
+
+    return eligibleMembers
       .sort((a, b) => {
         // 승률 우선, 같으면 총 경기수 많은 순
         if (b.winRate !== a.winRate) {

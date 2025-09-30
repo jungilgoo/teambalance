@@ -183,19 +183,39 @@ export default function TeamStatsPage() {
                 </TableHeader>
                 <TableBody>
                   {membersWithUsers
-                    .sort((a, b) => b.winRate - a.winRate)
+                    .sort((a, b) => {
+                      // 랭킹이 있는 멤버들을 먼저 정렬 (승률순)
+                      if (a.winRateRank > 0 && b.winRateRank > 0) {
+                        return b.winRate - a.winRate
+                      }
+                      // 랭킹이 있는 멤버가 랭킹이 없는 멤버보다 앞에 오도록
+                      if (a.winRateRank > 0 && b.winRateRank === 0) return -1
+                      if (a.winRateRank === 0 && b.winRateRank > 0) return 1
+                      // 둘 다 랭킹이 없으면 닉네임순으로 정렬
+                      return a.nickname.localeCompare(b.nickname)
+                    })
                     .map((member, index) => {
                       // 해당 멤버의 KDA와 주력 챔피언 정보 찾기
                       const memberKDAStats = memberStats.find(stat => stat.memberId === member.id)
+                      
+                      // 랭킹이 있는 멤버들의 실제 순위 계산
+                      const rankedMembers = membersWithUsers.filter(m => m.winRateRank > 0)
+                      const actualRankIndex = rankedMembers.findIndex(m => m.id === member.id)
                       
                       return (
                         <TableRow key={member.id}>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-1">
-                              {index === 0 && <Crown className="w-4 h-4 text-yellow-500" />}
-                              {index === 1 && <Medal className="w-4 h-4 text-gray-400" />}
-                              {index === 2 && <Medal className="w-4 h-4 text-amber-600" />}
-                              #{index + 1}
+                              {member.winRateRank > 0 ? (
+                                <>
+                                  {actualRankIndex === 0 && <Crown className="w-4 h-4 text-yellow-500" />}
+                                  {actualRankIndex === 1 && <Medal className="w-4 h-4 text-gray-400" />}
+                                  {actualRankIndex === 2 && <Medal className="w-4 h-4 text-amber-600" />}
+                                  #{member.winRateRank}
+                                </>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">미참여</span>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>

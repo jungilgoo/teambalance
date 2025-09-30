@@ -143,18 +143,34 @@ export const calculateMemberRankings = (members: TeamMember[]): MemberRanking[] 
     }
   })
 
-  // TierScore 순위 계산
-  const tierScoreSorted = [...membersWithStats].sort((a, b) => b.stats.tierScore - a.stats.tierScore)
+  // 경기수 5판 이상인 멤버가 있는지 확인
+  const hasMembersWith5PlusGames = membersWithStats.some(member => member.totalGames >= 5)
+  
+  // 경기수 5판 이상인 멤버가 있으면, 5판 미만인 멤버는 랭킹에서 제외
+  const eligibleMembers = hasMembersWith5PlusGames 
+    ? membersWithStats.filter(member => member.totalGames >= 5)
+    : membersWithStats
+
+  // TierScore 순위 계산 (경기수 조건을 만족하는 멤버들만)
+  const tierScoreSorted = [...eligibleMembers].sort((a, b) => b.stats.tierScore - a.stats.tierScore)
   tierScoreSorted.forEach((member, index) => {
     const originalIndex = membersWithStats.findIndex(m => m.id === member.id)
     membersWithStats[originalIndex].tierScoreRank = index + 1
   })
 
-  // 승률 순위 계산
-  const winRateSorted = [...membersWithStats].sort((a, b) => b.winRate - a.winRate)
+  // 승률 순위 계산 (경기수 조건을 만족하는 멤버들만)
+  const winRateSorted = [...eligibleMembers].sort((a, b) => b.winRate - a.winRate)
   winRateSorted.forEach((member, index) => {
     const originalIndex = membersWithStats.findIndex(m => m.id === member.id)
     membersWithStats[originalIndex].winRateRank = index + 1
+  })
+
+  // 경기수 5판 미만인 멤버들의 랭킹을 0으로 설정 (랭킹에서 제외 표시)
+  membersWithStats.forEach(member => {
+    if (member.totalGames < 5 && hasMembersWith5PlusGames) {
+      member.tierScoreRank = 0
+      member.winRateRank = 0
+    }
   })
 
   return membersWithStats
