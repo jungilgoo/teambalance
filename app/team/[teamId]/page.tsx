@@ -493,7 +493,7 @@ export default function TeamDashboard() {
                   팀 멤버 ({members.length}명)
                 </CardTitle>
                 <CardDescription>
-                  팀원들의 티어와 포지션, 최근 성과를 확인하세요
+                  팀원들의 티어와 포지션, 최근 성과를 확인하세요 (멤버 카드를 클릭하면 최근 전적을 확인할 수 있습니다)
                 </CardDescription>
               </CardHeader>
               <CardContent>

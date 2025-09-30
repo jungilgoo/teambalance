@@ -16,7 +16,8 @@ export function ThemeToggle() {
   if (!mounted) {
     return (
       <Button variant="ghost" size="sm">
-        <Sun className="h-4 w-4" />
+        <Sun className="h-4 w-4 mr-2" />
+        <span>다크모드</span>
       </Button>
     )
   }
@@ -29,9 +30,15 @@ export function ThemeToggle() {
       className="relative"
     >
       {theme === 'light' ? (
-        <Sun className="h-4 w-4 transition-all" />
+        <>
+          <Sun className="h-4 w-4 transition-all mr-2" />
+          <span>다크모드</span>
+        </>
       ) : (
-        <Moon className="h-4 w-4 transition-all" />
+        <>
+          <Moon className="h-4 w-4 transition-all mr-2" />
+          <span>라이트모드</span>
+        </>
       )}
       <span className="sr-only">테마 전환</span>
     </Button>

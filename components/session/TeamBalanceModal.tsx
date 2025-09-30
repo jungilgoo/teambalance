@@ -276,31 +276,13 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
   const formatTeamBalanceResult = () => {
     if (!balancedTeams) return ''
 
-    const getPositionFromAnalysis = (memberId: string, team: 'team1' | 'team2') => {
-      const assignments = team === 'team1' ? balancedTeams.positionAnalysis.team1Assignments : balancedTeams.positionAnalysis.team2Assignments
-      return assignments[memberId] || '미정'
-    }
-
     const formatTeam = (team: SelectedMember[], teamName: string, teamMmr: number, teamKey: 'team1' | 'team2') => {
       const teamEmoji = teamKey === 'team1' ? '🔵' : '🔴'
       let result = `${teamEmoji} ${teamName} (평균 티어: ${teamMmr}점)\n`
       
-      // 포지션 순서대로 정렬
-      const positionOrder = ['top', 'jungle', 'mid', 'adc', 'support']
-      const sortedMembers = [...team].sort((a, b) => {
-        const posA = getPositionFromAnalysis(a.id, teamKey)
-        const posB = getPositionFromAnalysis(b.id, teamKey)
-        const orderA = positionOrder.indexOf(posA)
-        const orderB = positionOrder.indexOf(posB)
-        return (orderA !== -1 ? orderA : 999) - (orderB !== -1 ? orderB : 999)
-      })
-
-      sortedMembers.forEach(member => {
-        const position = getPositionFromAnalysis(member.id, teamKey)
-        const positionName = positionNames[position as keyof typeof positionNames] || position
-        const tierScore = calculateMemberTierScore(member)
-        result += `- ${positionName}: ${member.nickname} (${tierScore}점)\n`
-      })
+      // 멤버 이름만 나열
+      const memberNames = team.map(member => member.nickname).join(', ')
+      result += `- ${memberNames}\n`
       
       return result
     }
