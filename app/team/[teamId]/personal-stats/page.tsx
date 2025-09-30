@@ -24,8 +24,7 @@ import {
   Gamepad2,
   TrendingUp,
   Users,
-  Sword,
-  Shield
+  Sword
 } from 'lucide-react'
 import {
   getUserPersonalStats,
@@ -471,91 +470,94 @@ export default function PersonalStatsPage() {
             </CardContent>
           </Card>
 
-          {/* 멤버 카운터 분석 */}
+          {/* 카운터 분석 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sword className="w-5 h-5" />
-                멤버 카운터 분석
+                카운터 분석
               </CardTitle>
               <CardDescription>
-                같은 포지션에서 어려웠던 상대 멤버 TOP 3
+                같은 포지션에서 어려웠던 상대 분석
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              {memberCounterStats.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  3경기 이상 같은 포지션에서 상대한 멤버가 없습니다
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {memberCounterStats.map((counter, index) => (
-                    <div key={counter.opponentMemberId} className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
-                      <div className="flex items-center gap-3">
-                        <div className="text-sm font-medium text-red-600 dark:text-red-400">#{index + 1}</div>
-                        <div>
-                          <div className="font-medium">{counter.opponentNickname}</div>
+            <CardContent className="space-y-6">
+              {/* 멤버 카운터 분석 */}
+              <div>
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  멤버 카운터 TOP 3
+                </h4>
+                {memberCounterStats.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground text-sm">
+                    3경기 이상 같은 포지션에서 상대한 멤버가 없습니다
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {memberCounterStats.map((counter, index) => (
+                      <div key={counter.opponentMemberId} className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm font-medium text-red-600 dark:text-red-400">#{index + 1}</div>
+                          <div>
+                            <div className="font-medium">{counter.opponentNickname}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {positionNames[counter.position]} • {counter.totalGames}경기
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-red-600 dark:text-red-400">
+                            승률 {counter.winRate}%
+                          </div>
                           <div className="text-sm text-muted-foreground">
-                            {positionNames[counter.position]} • {counter.totalGames}경기
+                            {counter.wins}승 {counter.totalGames - counter.wins}패
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-semibold text-red-600 dark:text-red-400">
-                          승률 {counter.winRate}%
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {counter.wins}승 {counter.totalGames - counter.wins}패
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-          {/* 챔피언 카운터 분석 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5" />
-                챔피언 카운터 분석
-              </CardTitle>
-              <CardDescription>
-                같은 포지션에서 어려웠던 챔피언 TOP 3
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {championCounterStats.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  3경기 이상 같은 포지션에서 상대한 챔피언이 없습니다
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {championCounterStats.map((counter, index) => (
-                    <div key={counter.opponentChampion} className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
-                      <div className="flex items-center gap-3">
-                        <div className="text-sm font-medium text-red-600 dark:text-red-400">#{index + 1}</div>
-                        <div>
-                          <div className="font-medium">{counter.opponentChampion}</div>
+              {/* 구분선 */}
+              <div className="border-t border-border"></div>
+
+              {/* 챔피언 카운터 분석 */}
+              <div>
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Crown className="w-4 h-4" />
+                  챔피언 카운터 TOP 3
+                </h4>
+                {championCounterStats.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground text-sm">
+                    3경기 이상 같은 포지션에서 상대한 챔피언이 없습니다
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {championCounterStats.map((counter, index) => (
+                      <div key={counter.opponentChampion} className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm font-medium text-red-600 dark:text-red-400">#{index + 1}</div>
+                          <div>
+                            <div className="font-medium">{counter.opponentChampion}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {positionNames[counter.position]} • {counter.totalGames}경기
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-red-600 dark:text-red-400">
+                            승률 {counter.winRate}%
+                          </div>
                           <div className="text-sm text-muted-foreground">
-                            {positionNames[counter.position]} • {counter.totalGames}경기
+                            {counter.wins}승 {counter.totalGames - counter.wins}패
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-semibold text-red-600 dark:text-red-400">
-                          승률 {counter.winRate}%
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {counter.wins}승 {counter.totalGames - counter.wins}패
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
