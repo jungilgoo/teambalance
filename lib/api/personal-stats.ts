@@ -46,6 +46,23 @@ export interface TeammateCompatibility {
   winRate: number
 }
 
+export interface MemberCounterStats {
+  opponentMemberId: string
+  opponentNickname: string
+  totalGames: number
+  wins: number
+  winRate: number
+  position: Position
+}
+
+export interface ChampionCounterStats {
+  opponentChampion: string
+  totalGames: number
+  wins: number
+  winRate: number
+  position: Position
+}
+
 // ============================================================================
 // 개인 통계 API 함수들
 // ============================================================================
@@ -710,6 +727,240 @@ export const getTeammateCompatibilityStats = async (
     return result
   } catch (error) {
     console.error('팀원 조합 통계 조회 실패:', error)
+    return []
+  }
+}
+
+/**
+ * 멤버 카운터 분석 - 같은 포지션에서 상대한 멤버들의 승률 분석
+ */
+export const getMemberCounterStats = async (
+  teamId: string,
+  userId: string
+): Promise<MemberCounterStats[]> => {
+  try {
+    if (!validateUUID(teamId) || !validateUUID(userId)) {
+      console.error('잘못된 ID 형식:', { teamId, userId })
+      return []
+    }
+
+    // 현재 사용자의 팀 멤버 ID 조회
+    const { data: currentMember, error: memberError } = await supabase
+      .from('team_members')
+      .select('id')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .single()
+
+    if (memberError || !currentMember) {
+      console.error('현재 사용자 팀 멤버 조회 오류:', memberError)
+      return []
+    }
+
+    // 현재 사용자의 매치 기록 조회
+    const { data: userMatches, error: userMatchError } = await supabase
+      .from('match_members')
+      .select(`
+        match_id,
+        team_side,
+        position,
+        matches!inner(
+          id,
+          team_id,
+          winner
+        )
+      `)
+      .eq('team_member_id', (currentMember as any).id)
+      .eq('matches.team_id', teamId)
+
+    if (userMatchError || !userMatches) {
+      console.error('사용자 매치 기록 조회 오류:', userMatchError)
+      return []
+    }
+
+    // 멤버별 카운터 통계 집계
+    const memberCounterStats: Record<string, {
+      opponentMemberId: string
+      opponentNickname: string
+      totalGames: number
+      wins: number
+      position: Position
+    }> = {}
+
+    // 각 매치에서 같은 포지션의 상대팀 멤버들 찾기
+    for (const userMatch of userMatches as any[]) {
+      // 같은 매치, 다른 팀사이드, 같은 포지션의 멤버들 조회
+      const { data: opponents, error: opponentError } = await supabase
+        .from('match_members')
+        .select(`
+          team_member_id,
+          team_members!inner(
+            id,
+            user_id,
+            nickname
+          )
+        `)
+        .eq('match_id', userMatch.match_id)
+        .eq('position', userMatch.position)
+        .neq('team_side', userMatch.team_side)
+
+      if (opponentError || !opponents) {
+        continue
+      }
+
+      // 승리 여부 판정
+      const isWin = userMatch.team_side === userMatch.matches.winner
+
+      for (const opponent of opponents as any[]) {
+        const opponentUserId = opponent.team_members.user_id
+        const opponentNickname = opponent.team_members.nickname
+
+        if (!memberCounterStats[opponentUserId]) {
+          memberCounterStats[opponentUserId] = {
+            opponentMemberId: opponentUserId,
+            opponentNickname,
+            totalGames: 0,
+            wins: 0,
+            position: userMatch.position
+          }
+        }
+
+        memberCounterStats[opponentUserId].totalGames++
+        if (isWin) {
+          memberCounterStats[opponentUserId].wins++
+        }
+      }
+    }
+
+    // MemberCounterStats 배열로 변환 및 정렬 (승률 낮은 순, 최소 3경기 이상)
+    const result: MemberCounterStats[] = Object.values(memberCounterStats)
+      .filter(stats => stats.totalGames >= 3)
+      .map(stats => ({
+        opponentMemberId: stats.opponentMemberId,
+        opponentNickname: stats.opponentNickname,
+        totalGames: stats.totalGames,
+        wins: stats.wins,
+        winRate: stats.totalGames > 0 ? Math.round((stats.wins / stats.totalGames) * 100) : 0,
+        position: stats.position
+      }))
+      .sort((a, b) => a.winRate - b.winRate) // 승률 낮은 순 (어려운 상대 순)
+      .slice(0, 3) // TOP 3
+
+    return result
+  } catch (error) {
+    console.error('멤버 카운터 통계 조회 실패:', error)
+    return []
+  }
+}
+
+/**
+ * 챔피언 카운터 분석 - 같은 포지션에서 상대한 챔피언들의 승률 분석
+ */
+export const getChampionCounterStats = async (
+  teamId: string,
+  userId: string
+): Promise<ChampionCounterStats[]> => {
+  try {
+    if (!validateUUID(teamId) || !validateUUID(userId)) {
+      console.error('잘못된 ID 형식:', { teamId, userId })
+      return []
+    }
+
+    // 현재 사용자의 팀 멤버 ID 조회
+    const { data: currentMember, error: memberError } = await supabase
+      .from('team_members')
+      .select('id')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .single()
+
+    if (memberError || !currentMember) {
+      console.error('현재 사용자 팀 멤버 조회 오류:', memberError)
+      return []
+    }
+
+    // 현재 사용자의 매치 기록 조회
+    const { data: userMatches, error: userMatchError } = await supabase
+      .from('match_members')
+      .select(`
+        match_id,
+        team_side,
+        position,
+        matches!inner(
+          id,
+          team_id,
+          winner
+        )
+      `)
+      .eq('team_member_id', (currentMember as any).id)
+      .eq('matches.team_id', teamId)
+
+    if (userMatchError || !userMatches) {
+      console.error('사용자 매치 기록 조회 오류:', userMatchError)
+      return []
+    }
+
+    // 챔피언별 카운터 통계 집계
+    const championCounterStats: Record<string, {
+      opponentChampion: string
+      totalGames: number
+      wins: number
+      position: Position
+    }> = {}
+
+    // 각 매치에서 같은 포지션의 상대팀 챔피언들 찾기
+    for (const userMatch of userMatches as any[]) {
+      // 같은 매치, 다른 팀사이드, 같은 포지션의 챔피언들 조회
+      const { data: opponents, error: opponentError } = await supabase
+        .from('match_members')
+        .select('champion')
+        .eq('match_id', userMatch.match_id)
+        .eq('position', userMatch.position)
+        .neq('team_side', userMatch.team_side)
+        .not('champion', 'is', null)
+
+      if (opponentError || !opponents) {
+        continue
+      }
+
+      // 승리 여부 판정
+      const isWin = userMatch.team_side === userMatch.matches.winner
+
+      for (const opponent of opponents as any[]) {
+        const opponentChampion = opponent.champion
+
+        if (!championCounterStats[opponentChampion]) {
+          championCounterStats[opponentChampion] = {
+            opponentChampion,
+            totalGames: 0,
+            wins: 0,
+            position: userMatch.position
+          }
+        }
+
+        championCounterStats[opponentChampion].totalGames++
+        if (isWin) {
+          championCounterStats[opponentChampion].wins++
+        }
+      }
+    }
+
+    // ChampionCounterStats 배열로 변환 및 정렬 (승률 낮은 순, 최소 3경기 이상)
+    const result: ChampionCounterStats[] = Object.values(championCounterStats)
+      .filter(stats => stats.totalGames >= 3)
+      .map(stats => ({
+        opponentChampion: stats.opponentChampion,
+        totalGames: stats.totalGames,
+        wins: stats.wins,
+        winRate: stats.totalGames > 0 ? Math.round((stats.wins / stats.totalGames) * 100) : 0,
+        position: stats.position
+      }))
+      .sort((a, b) => a.winRate - b.winRate) // 승률 낮은 순 (어려운 상대 순)
+      .slice(0, 3) // TOP 3
+
+    return result
+  } catch (error) {
+    console.error('챔피언 카운터 통계 조회 실패:', error)
     return []
   }
 }

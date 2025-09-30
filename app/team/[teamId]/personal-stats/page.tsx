@@ -23,17 +23,23 @@ import {
   Target,
   Gamepad2,
   TrendingUp,
-  Users
+  Users,
+  Sword,
+  Shield
 } from 'lucide-react'
 import {
   getUserPersonalStats,
   getUserChampionStats,
   getUserPositionChampionStats,
   getTeammateCompatibilityStats,
+  getMemberCounterStats,
+  getChampionCounterStats,
   PersonalStats,
   ChampionStats,
   PositionChampionStats,
-  TeammateCompatibility
+  TeammateCompatibility,
+  MemberCounterStats,
+  ChampionCounterStats
 } from '@/lib/api/personal-stats'
 
 export default function PersonalStatsPage() {
@@ -48,6 +54,8 @@ export default function PersonalStatsPage() {
   const [championStats, setChampionStats] = useState<ChampionStats[]>([])
   const [positionChampionStats, setPositionChampionStats] = useState<PositionChampionStats[]>([])
   const [teammateCompatibilityStats, setTeammateCompatibilityStats] = useState<TeammateCompatibility[]>([])
+  const [memberCounterStats, setMemberCounterStats] = useState<MemberCounterStats[]>([])
+  const [championCounterStats, setChampionCounterStats] = useState<ChampionCounterStats[]>([])
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [selectedMemberId, setSelectedMemberId] = useState<string>('')
   const [selectedMemberNickname, setSelectedMemberNickname] = useState<string>('')
@@ -55,17 +63,21 @@ export default function PersonalStatsPage() {
   // 선택된 멤버의 통계 데이터를 로드하는 함수
   const loadMemberStats = useCallback(async (memberId: string) => {
     try {
-      const [personalStatsData, championStatsData, positionStatsData, teammateStatsData] = await Promise.all([
+      const [personalStatsData, championStatsData, positionStatsData, teammateStatsData, memberCounterData, championCounterData] = await Promise.all([
         getUserPersonalStats(teamId, memberId),
         getUserChampionStats(teamId, memberId),
         getUserPositionChampionStats(teamId, memberId),
-        getTeammateCompatibilityStats(teamId, memberId)
+        getTeammateCompatibilityStats(teamId, memberId),
+        getMemberCounterStats(teamId, memberId),
+        getChampionCounterStats(teamId, memberId)
       ])
 
       setPersonalStats(personalStatsData)
       setChampionStats(championStatsData)
       setPositionChampionStats(positionStatsData)
       setTeammateCompatibilityStats(teammateStatsData)
+      setMemberCounterStats(memberCounterData)
+      setChampionCounterStats(championCounterData)
     } catch (error) {
       console.error('멤버 통계 로드 오류:', error)
     }
@@ -451,6 +463,94 @@ export default function PersonalStatsPage() {
                         }`}>
                           승률 {teammate.winRate}%
                         </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 멤버 카운터 분석 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sword className="w-5 h-5" />
+                멤버 카운터 분석
+              </CardTitle>
+              <CardDescription>
+                같은 포지션에서 어려웠던 상대 멤버 TOP 3
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {memberCounterStats.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  3경기 이상 같은 포지션에서 상대한 멤버가 없습니다
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {memberCounterStats.map((counter, index) => (
+                    <div key={counter.opponentMemberId} className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+                      <div className="flex items-center gap-3">
+                        <div className="text-sm font-medium text-red-600 dark:text-red-400">#{index + 1}</div>
+                        <div>
+                          <div className="font-medium">{counter.opponentNickname}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {positionNames[counter.position]} • {counter.totalGames}경기
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold text-red-600 dark:text-red-400">
+                          승률 {counter.winRate}%
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {counter.wins}승 {counter.totalGames - counter.wins}패
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 챔피언 카운터 분석 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                챔피언 카운터 분석
+              </CardTitle>
+              <CardDescription>
+                같은 포지션에서 어려웠던 챔피언 TOP 3
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {championCounterStats.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  3경기 이상 같은 포지션에서 상대한 챔피언이 없습니다
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {championCounterStats.map((counter, index) => (
+                    <div key={counter.opponentChampion} className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+                      <div className="flex items-center gap-3">
+                        <div className="text-sm font-medium text-red-600 dark:text-red-400">#{index + 1}</div>
+                        <div>
+                          <div className="font-medium">{counter.opponentChampion}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {positionNames[counter.position]} • {counter.totalGames}경기
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold text-red-600 dark:text-red-400">
+                          승률 {counter.winRate}%
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {counter.wins}승 {counter.totalGames - counter.wins}패
+                        </div>
                       </div>
                     </div>
                   ))}
