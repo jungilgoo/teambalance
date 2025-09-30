@@ -11,7 +11,7 @@ import { getUserById } from '@/lib/supabase-api'
 import { useTeamMembersRealtime } from '@/lib/hooks/useTeamMembersRealtime'
 import { calculateMemberTierScore } from '@/lib/stats'
 import { tierNames, positionNames } from '@/lib/utils'
-import { analyzeTeamFormation, recommendOptimalPositions, optimizedTeamBalancing, convertToLegacyFormat } from '@/lib/position-analysis'
+import { analyzeTeamFormation, recommendOptimalPositions, optimizedTeamBalancing, convertToLegacyFormat, selectBalancingMethod, type BalancingMethod as BalancingMethodType } from '@/lib/position-analysis'
 import { Users, Crown, RefreshCw, AlertTriangle, CheckCircle, Eye, Copy, Check, Camera } from 'lucide-react'
 import PositionCoverageDisplay from '@/components/ui/position-coverage-display'
 
@@ -33,13 +33,15 @@ interface SelectedMember extends TeamMember {
   calculatedTierScore?: number
 }
 
-type BalancingMethod = 'smart' | 'random'
+type BalancingMethod = 'smart' | 'draft' | 'random'
 
 export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceModalProps) {
   const [open, setOpen] = useState(false)
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [isBalancing, setIsBalancing] = useState(false)
   const [balancingMethod, setBalancingMethod] = useState<BalancingMethod>('smart')
+  const [captain1, setCaptain1] = useState<string | null>(null)
+  const [captain2, setCaptain2] = useState<string | null>(null)
   const [isCopied, setIsCopied] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
@@ -105,6 +107,19 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
     setBalancingMethod(newMethod)
     // 밸런싱 방식이 바뀌면 결과 초기화
     setBalancedTeams(null)
+    // 주장 선택도 초기화
+    setCaptain1(null)
+    setCaptain2(null)
+  }
+
+  const handleCaptainChange = (captainType: 'captain1' | 'captain2', memberId: string) => {
+    if (captainType === 'captain1') {
+      setCaptain1(memberId)
+    } else {
+      setCaptain2(memberId)
+    }
+    // 주장이 바뀌면 결과 초기화
+    setBalancedTeams(null)
   }
 
   const balanceTeamsSmart = (players: SelectedMember[]): {
@@ -119,32 +134,62 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
     }
   } => {
     try {
-      // 새로운 최적화된 팀 밸런싱 알고리즘 사용
-      console.log('🎯 최적화된 팀 밸런싱 시도:', players.length, '명')
-      const optimizedResult = optimizedTeamBalancing(players)
-      console.log('🎯 최적화 결과:', optimizedResult.success, optimizedResult.message)
+      // 선택된 밸런싱 방식에 따라 다른 알고리즘 사용
+      console.log(`🎯 ${balancingMethod} 밸런싱 시도:`, players.length, '명')
+      
+      if (balancingMethod === 'draft') {
+        // 선택된 주장들을 찾기
+        const selectedCaptain1Member = captain1 ? players.find(p => p.id === captain1) : undefined
+        const selectedCaptain2Member = captain2 ? players.find(p => p.id === captain2) : undefined
+        
+        const result = selectBalancingMethod(players, 'draft' as BalancingMethodType, selectedCaptain1Member, selectedCaptain2Member)
+        console.log(`🎯 드래프트 결과:`, result.success, result.message)
 
-      if (optimizedResult.success && optimizedResult.bestCombination) {
-        console.log('✅ 최적화된 알고리즘 성공!')
-        const legacyFormat = convertToLegacyFormat(optimizedResult.bestCombination)
+        if (result.success && result.bestCombination) {
+          console.log('✅ 드래프트 알고리즘 성공!')
+          const legacyFormat = convertToLegacyFormat(result.bestCombination)
 
-        return {
-          team1: legacyFormat.team1 as SelectedMember[],
-          team2: legacyFormat.team2 as SelectedMember[],
-          positionAnalysis: {
-            team1Assignments: legacyFormat.positionAnalysis.team1Assignments,
-            team2Assignments: legacyFormat.positionAnalysis.team2Assignments,
-            team1Score: legacyFormat.positionAnalysis.team1Score,
-            team2Score: legacyFormat.positionAnalysis.team2Score,
-            feasible: legacyFormat.positionFeasible
+          return {
+            team1: legacyFormat.team1 as SelectedMember[],
+            team2: legacyFormat.team2 as SelectedMember[],
+            positionAnalysis: {
+              team1Assignments: legacyFormat.positionAnalysis.team1Assignments,
+              team2Assignments: legacyFormat.positionAnalysis.team2Assignments,
+              team1Score: legacyFormat.positionAnalysis.team1Score,
+              team2Score: legacyFormat.positionAnalysis.team2Score,
+              feasible: legacyFormat.positionFeasible
+            }
           }
+        } else {
+          console.log('❌ 드래프트 알고리즘 실패:', result.message)
         }
       } else {
-        console.log('❌ 최적화된 알고리즘 실패:', optimizedResult.message)
+        // 기존 최적화된 팀 밸런싱 알고리즘 사용
+        const optimizedResult = optimizedTeamBalancing(players)
+        console.log('🎯 최적화 결과:', optimizedResult.success, optimizedResult.message)
+
+        if (optimizedResult.success && optimizedResult.bestCombination) {
+          console.log('✅ 최적화된 알고리즘 성공!')
+          const legacyFormat = convertToLegacyFormat(optimizedResult.bestCombination)
+
+          return {
+            team1: legacyFormat.team1 as SelectedMember[],
+            team2: legacyFormat.team2 as SelectedMember[],
+            positionAnalysis: {
+              team1Assignments: legacyFormat.positionAnalysis.team1Assignments,
+              team2Assignments: legacyFormat.positionAnalysis.team2Assignments,
+              team1Score: legacyFormat.positionAnalysis.team1Score,
+              team2Score: legacyFormat.positionAnalysis.team2Score,
+              feasible: legacyFormat.positionFeasible
+            }
+          }
+        } else {
+          console.log('❌ 최적화된 알고리즘 실패:', optimizedResult.message)
+        }
       }
     } catch (error) {
-      // 최적화된 밸런싱 실패 시 백업 방식 사용
-      console.error('❌ 최적화된 밸런싱 예외:', error)
+      // 선택된 밸런싱 실패 시 백업 방식 사용
+      console.error(`❌ ${balancingMethod} 밸런싱 예외:`, error)
     }
 
     // 백업: 균형잡힌 스네이크 드래프트
@@ -227,7 +272,27 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
       const playersToUse = membersWithTierScore
 
       // 선택된 밸런싱 방식에 따라 팀 구성
-      if (balancingMethod === 'smart') {
+      if (balancingMethod === 'random') {
+        const randomResult = balanceTeamsRandom(playersToUse)
+        const team1TierScore = Math.round(randomResult.team1.reduce((sum, member) => sum + calculateMemberTierScore(member), 0) / randomResult.team1.length)
+        const team2TierScore = Math.round(randomResult.team2.reduce((sum, member) => sum + calculateMemberTierScore(member), 0) / randomResult.team2.length)
+
+        setBalancedTeams({
+          team1: randomResult.team1,
+          team2: randomResult.team2,
+          team1MMR: team1TierScore,
+          team2MMR: team2TierScore,
+          positionFeasible: analyzeTeamFormation(randomResult.team1).canFormCompleteTeam && analyzeTeamFormation(randomResult.team2).canFormCompleteTeam,
+          positionAnalysis: {
+            team1Assignments: recommendOptimalPositions(randomResult.team1),
+            team2Assignments: recommendOptimalPositions(randomResult.team2),
+            team1Score: randomResult.team1.reduce((sum, member) => sum + calculateMemberTierScore(member), 0),
+            team2Score: randomResult.team2.reduce((sum, member) => sum + calculateMemberTierScore(member), 0),
+            feasible: analyzeTeamFormation(randomResult.team1).canFormCompleteTeam && analyzeTeamFormation(randomResult.team2).canFormCompleteTeam
+          }
+        })
+      } else {
+        // smart 또는 draft 방식
         const smartResult = balanceTeamsSmart(playersToUse)
         const team1TierScore = Math.round(smartResult.team1.reduce((sum, member) => sum + calculateMemberTierScore(member), 0) / smartResult.team1.length)
         const team2TierScore = Math.round(smartResult.team2.reduce((sum, member) => sum + calculateMemberTierScore(member), 0) / smartResult.team2.length)
@@ -515,6 +580,7 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="smart">스마트 밸런싱 (티어 점수 + 승률)</SelectItem>
+                    <SelectItem value="draft">드래프트 밸런싱 (주장 선정 + 스네이크 드래프트)</SelectItem>
                     <SelectItem value="random">랜덤 밸런싱</SelectItem>
                   </SelectContent>
                 </Select>
@@ -524,6 +590,10 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
                   <div>
                     <strong>스마트 밸런싱:</strong> 각 플레이어의 티어와 승률을 고려하여 양 팀의 실력이 균등하게 배치됩니다.
                   </div>
+                ) : balancingMethod === 'draft' ? (
+                  <div>
+                    <strong>드래프트 밸런싱:</strong> 티어 점수 상위 2명을 주장으로 선정하고, 포지션 부족도와 티어를 고려하여 스네이크 드래프트로 팀을 구성합니다.
+                  </div>
                 ) : (
                   <div>
                     <strong>랜덤 밸런싱:</strong> 완전히 무작위로 팀을 구성합니다. 실력 차이는 고려하지 않습니다.
@@ -532,6 +602,48 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
               </div>
             </div>
           </div>
+
+          {/* 주장 선택 (드래프트 방식일 때만 표시) */}
+          {balancingMethod === 'draft' && (
+            <div>
+              <h3 className="text-lg font-semibold mb-4">주장 선택</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">1팀 주장</label>
+                  <Select value={captain1 || ''} onValueChange={(value) => handleCaptainChange('captain1', value)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="1팀 주장을 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {membersWithTierScore.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.nickname} ({member.mainPosition}, {member.calculatedTierScore}점)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">2팀 주장</label>
+                  <Select value={captain2 || ''} onValueChange={(value) => handleCaptainChange('captain2', value)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="2팀 주장을 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {membersWithTierScore.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.nickname} ({member.mainPosition}, {member.calculatedTierScore}점)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                  <strong>주장 선택 안내:</strong> 각 팀의 주장을 선택하면 해당 주장들이 스네이크 드래프트로 나머지 멤버들을 선택합니다. 주장을 선택하지 않으면 자동으로 티어 점수 상위 2명이 주장이 됩니다.
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 밸런싱 버튼 */}
           <div className="flex justify-center">

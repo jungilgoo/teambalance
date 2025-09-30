@@ -1,7 +1,7 @@
 import { Position, TeamMember } from './types'
 import { getMemberPositionPreferences, canMemberPlay } from './types'
 import { calculateMemberTierScore } from './stats'
-import { simpleBalancingAlgorithm, type SimpleBalancingResult } from './simple-balancing'
+import { simpleBalancingAlgorithm, draftBalancingAlgorithm, type SimpleBalancingResult } from './simple-balancing'
 
 // 포지션 커버리지 분석 결과
 export interface PositionCoverage {
@@ -521,7 +521,11 @@ export interface OptimizedTeamBalancingResult {
   positionAnalysis?: PositionCandidates[]
 }
 
-export function optimizedTeamBalancing(members: TeamMember[]): OptimizedTeamBalancingResult {
+// 밸런싱 방식 타입 정의
+export type BalancingMethod = 'optimized' | 'draft'
+
+// 밸런싱 방식 선택 함수
+export function selectBalancingMethod(members: TeamMember[], method: BalancingMethod, captain1?: TeamMember, captain2?: TeamMember): OptimizedTeamBalancingResult {
   try {
     if (members.length !== 10) {
       return {
@@ -532,10 +536,20 @@ export function optimizedTeamBalancing(members: TeamMember[]): OptimizedTeamBala
       }
     }
 
-    console.log('단순 밸런싱 알고리즘 시작')
+    console.log(`${method} 밸런싱 알고리즘 시작`)
 
-    // 새로운 단순 밸런싱 알고리즘 실행
-    const simpleResult = simpleBalancingAlgorithm(members)
+    let simpleResult: SimpleBalancingResult
+
+    // 선택된 방식에 따라 다른 알고리즘 실행
+    switch (method) {
+      case 'draft':
+        simpleResult = draftBalancingAlgorithm(members, captain1, captain2)
+        break
+      case 'optimized':
+      default:
+        simpleResult = simpleBalancingAlgorithm(members)
+        break
+    }
     
     if (!simpleResult.success) {
       return {
@@ -546,10 +560,10 @@ export function optimizedTeamBalancing(members: TeamMember[]): OptimizedTeamBala
       }
     }
 
-    // 단순 알고리즘 결과를 기존 형식으로 변환
+    // 알고리즘 결과를 기존 형식으로 변환
     const convertedResult = convertSimpleAlgorithmResult(simpleResult)
     
-    console.log(`단순 밸런싱 성공: 점수차이 ${simpleResult.scoreDifference}점`)
+    console.log(`${method} 밸런싱 성공: 점수차이 ${simpleResult.scoreDifference}점`)
 
     return {
       success: true,
@@ -567,6 +581,11 @@ export function optimizedTeamBalancing(members: TeamMember[]): OptimizedTeamBala
       message: `밸런싱 중 오류 발생: ${error instanceof Error ? error.message : '알 수 없는 오류'}`
     }
   }
+}
+
+export function optimizedTeamBalancing(members: TeamMember[]): OptimizedTeamBalancingResult {
+  // 기본적으로 최적화된 방식 사용
+  return selectBalancingMethod(members, 'optimized')
 }
 
 // 단순 알고리즘 결과를 기존 형식으로 변환

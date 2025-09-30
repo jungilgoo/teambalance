@@ -464,6 +464,144 @@ export function optimizeTeamSplit(
   return bestSplit
 }
 
+// 드래프트 방식 밸런싱 알고리즘
+export function draftBalancingAlgorithm(members: TeamMember[], captain1?: TeamMember, captain2?: TeamMember): SimpleBalancingResult {
+  console.log('드래프트 방식 밸런싱 알고리즘 시작')
+
+  if (members.length !== 10) {
+    return {
+      success: false,
+      team1: [],
+      team2: [],
+      team1Assignments: {},
+      team2Assignments: {},
+      team1TotalScore: 0,
+      team2TotalScore: 0,
+      scoreDifference: 0,
+      message: `정확히 10명이 필요합니다. 현재: ${members.length}명`
+    }
+  }
+
+  try {
+    // 1단계: 주장 선정 (선택된 주장이 있으면 사용, 없으면 티어 점수 상위 2명)
+    let selectedCaptain1: TeamMember
+    let selectedCaptain2: TeamMember
+    
+    if (captain1 && captain2) {
+      selectedCaptain1 = captain1
+      selectedCaptain2 = captain2
+      console.log(`선택된 주장: ${selectedCaptain1.nickname}(${calculateMemberTierScore(selectedCaptain1)}점), ${selectedCaptain2.nickname}(${calculateMemberTierScore(selectedCaptain2)}점)`)
+    } else {
+      // 주장이 선택되지 않은 경우 티어 점수 상위 2명을 주장으로 선정
+      const sortedByTier = [...members].sort((a, b) => 
+        calculateMemberTierScore(b) - calculateMemberTierScore(a)
+      )
+      selectedCaptain1 = sortedByTier[0]
+      selectedCaptain2 = sortedByTier[1]
+      console.log(`자동 주장 선정: ${selectedCaptain1.nickname}(${calculateMemberTierScore(selectedCaptain1)}점), ${selectedCaptain2.nickname}(${calculateMemberTierScore(selectedCaptain2)}점)`)
+    }
+
+    // 2단계: 주포지션별 멤버 수 분석
+    const positionCount: Record<string, TeamMember[]> = {
+      top: [],
+      jungle: [],
+      mid: [],
+      adc: [],
+      support: []
+    }
+
+    members.forEach(member => {
+      if (positionCount[member.mainPosition]) {
+        positionCount[member.mainPosition].push(member)
+      }
+    })
+
+    // 포지션별 부족도 계산 (2명 미만이면 부족, 서포터는 제외)
+    const positionScarcity: Record<string, number> = {}
+    Object.entries(positionCount).forEach(([position, members]) => {
+      if (position !== 'support') {
+        positionScarcity[position] = Math.max(0, 2 - members.length)
+      } else {
+        positionScarcity[position] = 0 // 서포터는 부족도 계산에서 제외
+      }
+    })
+
+    console.log('포지션별 부족도:', positionScarcity)
+
+    // 3단계: 드래프트 우선순위 계산
+    const getDraftPriority = (member: TeamMember): number => {
+      const tierScore = calculateMemberTierScore(member)
+      const scarcity = positionScarcity[member.mainPosition] || 0
+      
+      // 포지션 부족도가 높을수록 우선순위 높음 (1000점 보너스)
+      // 티어 점수는 기본 우선순위
+      return tierScore + (scarcity * 1000)
+    }
+
+    // 주장 제외한 나머지 멤버들을 우선순위 순으로 정렬
+    const remainingMembers = members.filter(m => 
+      m.id !== selectedCaptain1.id && m.id !== selectedCaptain2.id
+    ).sort((a, b) => getDraftPriority(b) - getDraftPriority(a))
+
+    console.log('드래프트 우선순위:', remainingMembers.map(m => 
+      `${m.nickname}(${m.mainPosition}, ${getDraftPriority(m)}점)`
+    ))
+
+    // 4단계: 스네이크 드래프트 실행
+    const team1: TeamMember[] = [selectedCaptain1]
+    const team2: TeamMember[] = [selectedCaptain2]
+    
+    // 스네이크 패턴: A-B-B-A-A-B-B-A-A-B
+    for (let i = 0; i < remainingMembers.length; i++) {
+      const pickNumber = i + 3 // 3픽부터 시작 (1픽, 2픽은 주장)
+      const isTeam1Pick = pickNumber % 4 === 1 || pickNumber % 4 === 0
+      
+      if (isTeam1Pick) {
+        team1.push(remainingMembers[i])
+        console.log(`${pickNumber}픽: ${remainingMembers[i].nickname} → 팀1`)
+      } else {
+        team2.push(remainingMembers[i])
+        console.log(`${pickNumber}픽: ${remainingMembers[i].nickname} → 팀2`)
+      }
+    }
+
+    // 각 팀의 총 점수 계산
+    const team1Score = team1.reduce((sum, member) => sum + calculateMemberTierScore(member), 0)
+    const team2Score = team2.reduce((sum, member) => sum + calculateMemberTierScore(member), 0)
+    const scoreDifference = Math.abs(team1Score - team2Score)
+
+    console.log(`드래프트 밸런싱 완료! 점수 차이: ${scoreDifference}`)
+    console.log(`팀1: ${team1.map(m => m.nickname).join(', ')}`)
+    console.log(`팀2: ${team2.map(m => m.nickname).join(', ')}`)
+
+    return {
+      success: true,
+      team1,
+      team2,
+      team1Assignments: {}, // 포지션 할당 없음
+      team2Assignments: {}, // 포지션 할당 없음
+      team1TotalScore: team1Score,
+      team2TotalScore: team2Score,
+      scoreDifference,
+      message: `드래프트 밸런싱 완료 (점수차: ${scoreDifference}점)`
+    }
+
+  } catch (error) {
+    console.error('드래프트 밸런싱 오류:', error)
+    return {
+      success: false,
+      team1: [],
+      team2: [],
+      team1Assignments: {},
+      team2Assignments: {},
+      team1TotalScore: 0,
+      team2TotalScore: 0,
+      scoreDifference: 0,
+      message: `드래프트 밸런싱 오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`
+    }
+  }
+}
+
 // 메인 단순 밸런싱 알고리즘
 export function simpleBalancingAlgorithm(members: TeamMember[]): SimpleBalancingResult {
   console.log('단순 밸런싱 알고리즘 시작')
