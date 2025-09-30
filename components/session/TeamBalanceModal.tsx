@@ -596,11 +596,13 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
                       <SelectValue placeholder="1팀 주장을 선택하세요" />
                     </SelectTrigger>
                     <SelectContent>
-                      {membersWithUser.map((member) => (
-                        <SelectItem key={member.id} value={member.id}>
-                          {member.nickname} ({member.mainPosition}, {calculateMemberTierScore(member)}점)
-                        </SelectItem>
-                      ))}
+                      {membersWithUser
+                        .filter(member => selectedMembers.includes(member.id))
+                        .map((member) => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.nickname} ({member.mainPosition}, {calculateMemberTierScore(member)}점)
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -611,11 +613,13 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
                       <SelectValue placeholder="2팀 주장을 선택하세요" />
                     </SelectTrigger>
                     <SelectContent>
-                      {membersWithUser.map((member) => (
-                        <SelectItem key={member.id} value={member.id}>
-                          {member.nickname} ({member.mainPosition}, {calculateMemberTierScore(member)}점)
-                        </SelectItem>
-                      ))}
+                      {membersWithUser
+                        .filter(member => selectedMembers.includes(member.id))
+                        .map((member) => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.nickname} ({member.mainPosition}, {calculateMemberTierScore(member)}점)
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
