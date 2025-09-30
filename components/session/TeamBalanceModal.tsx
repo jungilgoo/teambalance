@@ -287,8 +287,7 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
             team1Assignments: recommendOptimalPositions(randomResult.team1),
             team2Assignments: recommendOptimalPositions(randomResult.team2),
             team1Score: randomResult.team1.reduce((sum, member) => sum + calculateMemberTierScore(member), 0),
-            team2Score: randomResult.team2.reduce((sum, member) => sum + calculateMemberTierScore(member), 0),
-            feasible: analyzeTeamFormation(randomResult.team1).canFormCompleteTeam && analyzeTeamFormation(randomResult.team2).canFormCompleteTeam
+            team2Score: randomResult.team2.reduce((sum, member) => sum + calculateMemberTierScore(member), 0)
           }
         })
       } else {
@@ -304,24 +303,6 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
           team2MMR: team2TierScore,
           positionFeasible: smartResult.positionAnalysis.feasible,
           positionAnalysis: smartResult.positionAnalysis
-        })
-      } else {
-        const randomResult = balanceTeamsRandom(playersToUse)
-        const team1TierScore = Math.round(randomResult.team1.reduce((sum, member) => sum + calculateMemberTierScore(member), 0) / randomResult.team1.length)
-        const team2TierScore = Math.round(randomResult.team2.reduce((sum, member) => sum + calculateMemberTierScore(member), 0) / randomResult.team2.length)
-
-        setBalancedTeams({
-          team1: randomResult.team1,
-          team2: randomResult.team2,
-          team1MMR: team1TierScore,
-          team2MMR: team2TierScore,
-          positionFeasible: analyzeTeamFormation(randomResult.team1).canFormCompleteTeam && analyzeTeamFormation(randomResult.team2).canFormCompleteTeam,
-          positionAnalysis: {
-            team1Assignments: recommendOptimalPositions(randomResult.team1),
-            team2Assignments: recommendOptimalPositions(randomResult.team2),
-            team1Score: analyzeTeamFormation(randomResult.team1).balanceScore,
-            team2Score: analyzeTeamFormation(randomResult.team2).balanceScore
-          }
         })
       }
 
@@ -615,9 +596,9 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
                       <SelectValue placeholder="1팀 주장을 선택하세요" />
                     </SelectTrigger>
                     <SelectContent>
-                      {membersWithTierScore.map((member) => (
+                      {membersWithUser.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
-                          {member.nickname} ({member.mainPosition}, {member.calculatedTierScore}점)
+                          {member.nickname} ({member.mainPosition}, {calculateMemberTierScore(member)}점)
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -630,9 +611,9 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
                       <SelectValue placeholder="2팀 주장을 선택하세요" />
                     </SelectTrigger>
                     <SelectContent>
-                      {membersWithTierScore.map((member) => (
+                      {membersWithUser.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
-                          {member.nickname} ({member.mainPosition}, {member.calculatedTierScore}점)
+                          {member.nickname} ({member.mainPosition}, {calculateMemberTierScore(member)}점)
                         </SelectItem>
                       ))}
                     </SelectContent>
