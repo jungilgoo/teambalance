@@ -12,7 +12,7 @@ import { calculateWinRate } from '@/lib/stats'
 import { positionNames } from '@/lib/utils'
 import { getChampionSplashArt, getChampionFallbackGradient } from '@/lib/champion-images'
 import { getTeamMembersStats, MemberStatsForTeam, getUserRecentMatches, RecentMatch } from '@/lib/api/personal-stats'
-import { Users, Crown, Plus, Play, BarChart3, Settings, History, Trophy, Wifi, WifiOff, User } from 'lucide-react'
+import { Users, Crown, Plus, Play, BarChart3, Settings, History, Trophy, Wifi, WifiOff, User, TrendingUp } from 'lucide-react'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { useTeamMembersRealtime } from '@/lib/hooks/useTeamMembersRealtime'
 import { usePendingRequestsCount } from '@/lib/hooks/usePendingRequestsRealtime'
@@ -404,6 +404,15 @@ export default function TeamDashboard() {
                   <History className="w-4 h-4 mr-2" />
                   경기 결과 조회
                 </Button>
+
+                <Button
+                  onClick={() => router.push(`/team/${teamId}/meta-analysis`)}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  메타 분석 보기
+                </Button>
                 
                 <InviteMemberModal 
                   teamId={teamId} 
@@ -554,6 +563,7 @@ export default function TeamDashboard() {
                 )}
               </CardContent>
             </Card>
+
           </div>
         </div>
       </main>
@@ -607,6 +617,7 @@ export default function TeamDashboard() {
           }}
         />
       )}
+
 
     </div>
   )
