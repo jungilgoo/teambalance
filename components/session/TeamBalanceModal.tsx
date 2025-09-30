@@ -272,12 +272,26 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
       const playersToUse = membersWithTierScore
 
       // 선택된 밸런싱 방식에 따라 팀 구성
+      let finalResult: {
+        team1: SelectedMember[]
+        team2: SelectedMember[]
+        team1MMR: number
+        team2MMR: number
+        positionFeasible: boolean
+        positionAnalysis: {
+          team1Assignments: Record<string, string>
+          team2Assignments: Record<string, string>
+          team1Score: number
+          team2Score: number
+        }
+      }
+
       if (balancingMethod === 'random') {
         const randomResult = balanceTeamsRandom(playersToUse)
         const team1TierScore = Math.round(randomResult.team1.reduce((sum, member) => sum + calculateMemberTierScore(member), 0) / randomResult.team1.length)
         const team2TierScore = Math.round(randomResult.team2.reduce((sum, member) => sum + calculateMemberTierScore(member), 0) / randomResult.team2.length)
 
-        setBalancedTeams({
+        finalResult = {
           team1: randomResult.team1,
           team2: randomResult.team2,
           team1MMR: team1TierScore,
@@ -289,21 +303,42 @@ export default function TeamBalanceModal({ teamId, currentUserId }: TeamBalanceM
             team1Score: randomResult.team1.reduce((sum, member) => sum + calculateMemberTierScore(member), 0),
             team2Score: randomResult.team2.reduce((sum, member) => sum + calculateMemberTierScore(member), 0)
           }
-        })
+        }
       } else {
         // smart 또는 draft 방식
         const smartResult = balanceTeamsSmart(playersToUse)
         const team1TierScore = Math.round(smartResult.team1.reduce((sum, member) => sum + calculateMemberTierScore(member), 0) / smartResult.team1.length)
         const team2TierScore = Math.round(smartResult.team2.reduce((sum, member) => sum + calculateMemberTierScore(member), 0) / smartResult.team2.length)
 
-        setBalancedTeams({
+        finalResult = {
           team1: smartResult.team1,
           team2: smartResult.team2,
           team1MMR: team1TierScore,
           team2MMR: team2TierScore,
           positionFeasible: smartResult.positionAnalysis.feasible,
           positionAnalysis: smartResult.positionAnalysis
-        })
+        }
+      }
+
+      // 평균 티어 점수가 낮은 팀을 블루팀(team1)으로 설정
+      if (finalResult.team1MMR > finalResult.team2MMR) {
+        // 팀 순서 바꾸기
+        const swappedResult = {
+          team1: finalResult.team2,
+          team2: finalResult.team1,
+          team1MMR: finalResult.team2MMR,
+          team2MMR: finalResult.team1MMR,
+          positionFeasible: finalResult.positionFeasible,
+          positionAnalysis: {
+            team1Assignments: finalResult.positionAnalysis.team2Assignments,
+            team2Assignments: finalResult.positionAnalysis.team1Assignments,
+            team1Score: finalResult.positionAnalysis.team2Score,
+            team2Score: finalResult.positionAnalysis.team1Score
+          }
+        }
+        setBalancedTeams(swappedResult)
+      } else {
+        setBalancedTeams(finalResult)
       }
 
       setIsBalancing(false)

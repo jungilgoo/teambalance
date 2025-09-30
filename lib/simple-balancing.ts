@@ -133,6 +133,21 @@ export function generateSimplePositionCoverageBalancing(
   
   console.log(`🎉 간단한 포지션 커버리지 밸런싱 성공! 점수차: ${bestSplit.scoreDifference}`)
   
+  // 평균 티어 점수가 낮은 팀을 첫 번째 팀으로 설정
+  if (bestSplit.team1Score > bestSplit.team2Score) {
+    return {
+      success: true,
+      team1: bestSplit.team2,
+      team2: bestSplit.team1,
+      team1Assignments: {}, // 포지션 할당 없음
+      team2Assignments: {}, // 포지션 할당 없음
+      team1TotalScore: bestSplit.team2Score,
+      team2TotalScore: bestSplit.team1Score,
+      scoreDifference: bestSplit.scoreDifference,
+      message: `포지션 커버리지 밸런싱 완료 (점수차: ${bestSplit.scoreDifference}점)`
+    }
+  }
+  
   return {
     success: true,
     team1: bestSplit.team1,
@@ -596,6 +611,21 @@ export function draftBalancingAlgorithm(members: TeamMember[], captain1?: TeamMe
     console.log(`팀1: ${team1.map(m => m.nickname).join(', ')}`)
     console.log(`팀2: ${team2.map(m => m.nickname).join(', ')}`)
 
+    // 평균 티어 점수가 낮은 팀을 첫 번째 팀으로 설정
+    if (team1Score > team2Score) {
+      return {
+        success: true,
+        team1: team2,
+        team2: team1,
+        team1Assignments: {}, // 포지션 할당 없음
+        team2Assignments: {}, // 포지션 할당 없음
+        team1TotalScore: team2Score,
+        team2TotalScore: team1Score,
+        scoreDifference,
+        message: `드래프트 밸런싱 완료 (점수차: ${scoreDifference}점)`
+      }
+    }
+
     return {
       success: true,
       team1,
@@ -747,6 +777,20 @@ export function simpleBalancingAlgorithm(members: TeamMember[]): SimpleBalancing
       }
 
       console.log(`기존 방식 밸런싱 완료: 점수 차이 ${bestResult.scoreDifference}점`)
+      
+      // 평균 티어 점수가 낮은 팀을 첫 번째 팀으로 설정
+      if (bestResult.team1TotalScore > bestResult.team2TotalScore) {
+        return {
+          ...bestResult,
+          team1: bestResult.team2,
+          team2: bestResult.team1,
+          team1TotalScore: bestResult.team2TotalScore,
+          team2TotalScore: bestResult.team1TotalScore,
+          team1Assignments: bestResult.team2Assignments,
+          team2Assignments: bestResult.team1Assignments
+        }
+      }
+      
       return bestResult
     }
 

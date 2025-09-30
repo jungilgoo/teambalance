@@ -222,15 +222,10 @@ export default function MetaAnalysisPage() {
                         {champion.totalPicks}픽 • 승률 {champion.winRate}%
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Badge variant="secondary" className="text-xs">
-                        {champion.pickRate}% 픽률
-                      </Badge>
-                      <div className="text-right">
-                        <div className="text-sm font-semibold">{champion.winRate}%</div>
-                        <div className="text-xs text-muted-foreground">
-                          {champion.totalWins}승 {champion.totalPicks - champion.totalWins}패
-                        </div>
+                    <div className="text-right">
+                      <div className="text-sm font-semibold">{champion.winRate}%</div>
+                      <div className="text-xs text-muted-foreground">
+                        {champion.totalWins}승 {champion.totalPicks - champion.totalWins}패
                       </div>
                     </div>
                   </div>
@@ -239,38 +234,6 @@ export default function MetaAnalysisPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* 통계 요약 */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>통계 요약</CardTitle>
-            <CardDescription>전체적인 경기 통계를 한눈에 확인하세요</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
-              <div className="p-4 bg-muted/30 rounded-lg">
-                <div className="text-2xl font-bold text-primary">{metaData.totalMatches}</div>
-                <div className="text-sm text-muted-foreground">총 경기</div>
-              </div>
-              <div className="p-4 bg-muted/30 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
-                  {Math.max(sideWinRate.blueTeamWinRate, sideWinRate.redTeamWinRate)}%
-                </div>
-                <div className="text-sm text-muted-foreground">최고 승률</div>
-              </div>
-              <div className="p-4 bg-muted/30 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{topChampions.length}</div>
-                <div className="text-sm text-muted-foreground">픽된 챔피언</div>
-              </div>
-              <div className="p-4 bg-muted/30 rounded-lg">
-                <div className="text-2xl font-bold text-orange-600">
-                  {topChampions.length > 0 ? topChampions[0].totalPicks : 0}
-                </div>
-                <div className="text-sm text-muted-foreground">최다 픽</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )

@@ -752,6 +752,23 @@ export function convertToLegacyFormat(evaluation: TeamCombinationEvaluation): {
   const avgBalance = evaluation.positionBalances.reduce((sum, pb) => sum + pb.balanceRatio, 0) / evaluation.positionBalances.length
   const positionScore = Math.round(avgBalance * 100)
 
+  // 평균 티어 점수가 낮은 팀을 첫 번째 팀으로 설정
+  if (team1MMR > team2MMR) {
+    return {
+      team1: evaluation.team2,
+      team2: evaluation.team1,
+      team1MMR: team2MMR,
+      team2MMR: team1MMR,
+      positionFeasible: evaluation.feasible,
+      positionAnalysis: {
+        team1Assignments: evaluation.team2Assignments,
+        team2Assignments: evaluation.team1Assignments,
+        team1Score: positionScore,
+        team2Score: positionScore
+      }
+    }
+  }
+
   return {
     team1: evaluation.team1,
     team2: evaluation.team2,
