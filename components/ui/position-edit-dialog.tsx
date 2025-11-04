@@ -94,7 +94,7 @@ export function PositionEditDialog({
               {memberName}님의 포지션
             </DialogTitle>
             <DialogDescription>
-              자신의 포지션만 수정할 수 있습니다.
+              포지션 수정 권한이 없습니다. (본인 또는 팀 리더만 수정 가능)
             </DialogDescription>
           </DialogHeader>
           

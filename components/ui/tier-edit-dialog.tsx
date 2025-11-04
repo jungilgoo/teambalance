@@ -68,7 +68,7 @@ export function TierEditDialog({
               {memberName}님의 티어
             </DialogTitle>
             <DialogDescription>
-              자신의 티어만 수정할 수 있습니다.
+              티어 수정 권한이 없습니다. (본인 또는 팀 리더만 수정 가능)
             </DialogDescription>
           </DialogHeader>
           

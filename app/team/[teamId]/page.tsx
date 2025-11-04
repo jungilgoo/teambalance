@@ -590,7 +590,7 @@ export default function TeamDashboard() {
               handleTierUpdate(tierEditDialog.memberId, newTier)
             }
           }}
-          canEdit={authState.user?.id === members.find(m => m.id === tierEditDialog.memberId)?.userId}
+          canEdit={authState.user?.id === members.find(m => m.id === tierEditDialog.memberId)?.userId || !!isTeamLeader}
         />
       )}
 
@@ -607,7 +607,7 @@ export default function TeamDashboard() {
               handlePositionUpdate(positionEditDialog.memberId, mainPosition, subPositions)
             }
           }}
-          canEdit={authState.user?.id === members.find(m => m.id === positionEditDialog.memberId)?.userId}
+          canEdit={authState.user?.id === members.find(m => m.id === positionEditDialog.memberId)?.userId || !!isTeamLeader}
         />
       )}
 
