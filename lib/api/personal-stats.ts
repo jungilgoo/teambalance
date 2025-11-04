@@ -405,7 +405,7 @@ export const getTeamMembersStats = async (
         id, 
         user_id, 
         nickname,
-        profiles(username)
+        profiles!user_id(username)
       `)
       .eq('team_id', teamId)
       .eq('status', 'active')

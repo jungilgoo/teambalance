@@ -55,7 +55,7 @@ export const getTeamMembers = async (
       .from('team_members')
       .select(`
         *,
-        profiles(username)
+        profiles!user_id(username)
       `)
       .eq('team_id', teamId)
       .in('status', statusFilter)
@@ -468,7 +468,7 @@ export const getPendingJoinRequests = async (teamId: string): Promise<TeamMember
       .from('team_members')
       .select(`
         *,
-        profiles(username)
+        profiles!user_id(username)
       `)
       .eq('team_id', teamId)
       .eq('status', 'pending')
