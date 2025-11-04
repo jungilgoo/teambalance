@@ -219,12 +219,7 @@ export default function TeamStatsPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div>
-                              <div className="font-medium">{member.nickname}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {member.user?.username || member.user?.name}
-                              </div>
-                            </div>
+                            <div className="font-medium">{member.nickname}</div>
                           </TableCell>
                           <TableCell>
                             <TierBadge tier={member.tier} size="sm" />
