@@ -398,10 +398,15 @@ export const getTeamMembersStats = async (
       return []
     }
 
-    // 팀 멤버 목록 조회
+    // 팀 멤버 목록 조회 - profiles와 JOIN하여 최신 username 가져오기
     const { data: teamMembers, error: memberError } = await supabase
       .from('team_members')
-      .select('id, user_id, nickname')
+      .select(`
+        id, 
+        user_id, 
+        nickname,
+        profiles!inner(username)
+      `)
       .eq('team_id', teamId)
       .eq('status', 'active')
 
@@ -507,7 +512,7 @@ export const getTeamMembersStats = async (
         return {
           memberId: member.id,
           userId: member.user_id,
-          nickname: member.nickname,
+          nickname: member.profiles?.username || member.nickname, // profiles.username 우선 사용
           averageKDA,
           topChampion,
           championPlayCount,

@@ -53,7 +53,10 @@ export const getTeamMembers = async (
 
     const { data: members, error } = await supabase
       .from('team_members')
-      .select('*')
+      .select(`
+        *,
+        profiles!inner(username)
+      `)
       .eq('team_id', teamId)
       .in('status', statusFilter)
       .order('joined_at', { ascending: true })
@@ -69,7 +72,7 @@ export const getTeamMembers = async (
       userId: member.user_id,
       role: member.role as 'leader' | 'vice_leader' | 'member',
       joinedAt: new Date(member.joined_at),
-      nickname: member.nickname,
+      nickname: member.profiles?.username || member.nickname, // profiles.username 우선 사용, fallback으로 기존 nickname
       tier: member.tier as TierType,
       mainPosition: member.main_position as Position,
       subPositions: member.sub_positions || [],
@@ -463,7 +466,10 @@ export const getPendingJoinRequests = async (teamId: string): Promise<TeamMember
   try {
     const { data: pendingMembers, error } = await supabase
       .from('team_members')
-      .select('*')
+      .select(`
+        *,
+        profiles!inner(username)
+      `)
       .eq('team_id', teamId)
       .eq('status', 'pending')
       .order('joined_at', { ascending: true }) // 먼저 신청한 순서대로
@@ -479,7 +485,7 @@ export const getPendingJoinRequests = async (teamId: string): Promise<TeamMember
       userId: member.user_id,
       role: member.role as 'leader' | 'vice_leader' | 'member',
       joinedAt: new Date(member.joined_at),
-      nickname: member.nickname,
+      nickname: member.profiles?.username || member.nickname, // profiles.username 우선 사용
       tier: member.tier as TierType,
       mainPosition: member.main_position as Position,
       subPositions: member.sub_positions || [],

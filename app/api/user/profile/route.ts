@@ -101,6 +101,24 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    // 모든 team_members 테이블의 nickname도 동시 업데이트
+    try {
+      const { error: teamMembersUpdateError } = await (supabase as any)
+        .from('team_members')
+        .update({ nickname: validatedUsername })
+        .eq('user_id', profile.id)
+
+      if (teamMembersUpdateError) {
+        console.error('팀 멤버 닉네임 동기화 오류:', teamMembersUpdateError)
+        // 팀 멤버 닉네임 업데이트 실패는 치명적이지 않으므로 로그만 남기고 계속 진행
+      } else {
+        console.log('팀 멤버 닉네임 동기화 완료:', validatedUsername)
+      }
+    } catch (error) {
+      console.error('팀 멤버 닉네임 동기화 중 예외:', error)
+      // 예외 발생 시에도 프로필 업데이트는 성공으로 처리
+    }
+
     return NextResponse.json({
       success: true,
       message: '닉네임이 성공적으로 변경되었습니다.',
