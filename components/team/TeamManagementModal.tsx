@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { MemberCard } from '@/components/ui/member-card'
+import { SimpleMemberList } from '@/components/team/SimpleMemberList'
 import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -546,63 +547,15 @@ export default function TeamManagementModal({
                     <span className="font-medium">활성 멤버 ({activeMembers.length}명)</span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {activeMembers.map((member) => (
-                      <MemberCard
-                        key={member.id}
-                        member={member}
-                        currentUserId={currentUserId}
-                        isLeader={isLeader}
-                        showActions={isLeader && member.role !== 'leader' && member.userId !== currentUserId}
-                      >
-                        {/* 리더 전용 관리 버튼 (자신 제외, 리더 제외) */}
-                        {isLeader && member.role !== 'leader' && member.userId !== currentUserId && (
-                          <div className="space-y-2">
-                            {/* 부리더 임명/해임 버튼 */}
-                            {member.role === 'member' && (
-                              <Button
-                                onClick={() => handlePromoteToViceLeader(member)}
-                                variant="outline"
-                                size="sm"
-                                className="w-full text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                              >
-                                <Shield className="w-4 h-4 mr-2" />
-                                부리더 임명
-                              </Button>
-                            )}
-
-                            {member.role === 'vice_leader' && (
-                              <Button
-                                onClick={() => handleDemoteFromViceLeader(member)}
-                                variant="outline"
-                                size="sm"
-                                className="w-full text-gray-600 hover:text-gray-700 hover:bg-gray-50"
-                              >
-                                <UserMinus className="w-4 h-4 mr-2" />
-                                부리더 해임
-                              </Button>
-                            )}
-
-                            {/* 추방 버튼 */}
-                            <Button
-                              onClick={() => handleKickMember(member)}
-                              variant="ghost"
-                              size="sm"
-                              className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
-                              disabled={isKicking}
-                            >
-                              {isKicking ? (
-                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              ) : (
-                                <Trash2 className="w-4 h-4 mr-2" />
-                              )}
-                              추방
-                            </Button>
-                          </div>
-                        )}
-                      </MemberCard>
-                    ))}
-                  </div>
+                  <SimpleMemberList
+                    members={activeMembers}
+                    currentUserId={currentUserId}
+                    isLeader={isLeader}
+                    isKicking={isKicking}
+                    onPromoteToViceLeader={handlePromoteToViceLeader}
+                    onDemoteFromViceLeader={handleDemoteFromViceLeader}
+                    onKickMember={handleKickMember}
+                  />
                 </>
               )}
             </>
