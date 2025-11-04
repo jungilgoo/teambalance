@@ -219,6 +219,13 @@ export function MemberCard({
                 <Crown className="w-4 h-4 text-white" />
               </div>
             )}
+
+            {/* 부리더 배지 */}
+            {member.role === 'vice_leader' && (
+              <div className="absolute -top-2 -right-1 w-7 h-7 bg-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                <Shield className="w-4 h-4 text-white" />
+              </div>
+            )}
           </div>
 
           {/* 편집 버튼들 */}

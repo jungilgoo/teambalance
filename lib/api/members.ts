@@ -10,6 +10,37 @@ const supabase = createSupabaseBrowser()
 // 팀 멤버 관리 API 함수들
 // ============================================================================
 
+/**
+ * 멤버가 승인 권한을 가지고 있는지 확인
+ * @param teamId - 팀 ID
+ * @param userId - 확인할 사용자 ID
+ * @returns 리더 또는 부리더면 true, 아니면 false
+ */
+export const canApproveMember = async (
+  teamId: string,
+  userId: string
+): Promise<boolean> => {
+  try {
+    const { data: member, error } = await supabase
+      .from('team_members')
+      .select('role, status')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .single()
+
+    if (error || !member) {
+      return false
+    }
+
+    // 리더 또는 부리더만 승인 권한 있음
+    return (member as any).role === 'leader' || (member as any).role === 'vice_leader'
+  } catch (error) {
+    console.error('권한 확인 오류:', error)
+    return false
+  }
+}
+
 export const getTeamMembers = async (
   teamId: string,
   includeKicked: boolean = false
@@ -36,7 +67,7 @@ export const getTeamMembers = async (
       id: member.id,
       teamId: member.team_id,
       userId: member.user_id,
-      role: member.role as 'leader' | 'member',
+      role: member.role as 'leader' | 'vice_leader' | 'member',
       joinedAt: new Date(member.joined_at),
       nickname: member.nickname,
       tier: member.tier as TierType,
@@ -123,7 +154,7 @@ export const addTeamMember = async (
       id: member.id,
       teamId: member.team_id,
       userId: member.user_id,
-      role: member.role as 'leader' | 'member',
+      role: member.role as 'leader' | 'vice_leader' | 'member',
       joinedAt: new Date(member.joined_at),
       nickname: member.nickname,
       tier: member.tier as TierType,
@@ -251,7 +282,7 @@ export const joinPublicTeam = async (
         id: updatedMember.id,
         teamId: updatedMember.team_id,
         userId: updatedMember.user_id,
-        role: updatedMember.role as 'leader' | 'member',
+        role: updatedMember.role as 'leader' | 'vice_leader' | 'member',
         joinedAt: new Date(updatedMember.joined_at),
         nickname: updatedMember.nickname,
         tier: updatedMember.tier as TierType,
@@ -446,7 +477,7 @@ export const getPendingJoinRequests = async (teamId: string): Promise<TeamMember
       id: member.id,
       teamId: member.team_id,
       userId: member.user_id,
-      role: member.role as 'leader' | 'member',
+      role: member.role as 'leader' | 'vice_leader' | 'member',
       joinedAt: new Date(member.joined_at),
       nickname: member.nickname,
       tier: member.tier as TierType,
@@ -480,7 +511,7 @@ export const approveJoinRequest = async (
     // 입력값 검증
     const validatedMemberId = validateUUID(memberId)
     const validatedApproverId = validateUUID(approverId)
-    
+
     if (!validatedMemberId || !validatedApproverId) {
       console.error('승인 요청 입력값 검증 실패')
       return { success: false }
@@ -489,7 +520,7 @@ export const approveJoinRequest = async (
     // 먼저 해당 멤버가 존재하고 pending 상태인지 확인
     const { data: existingMember, error: checkError } = await supabase
       .from('team_members')
-      .select('*')
+      .select('*, team_id')
       .eq('id', memberId)
       .single()
 
@@ -500,6 +531,17 @@ export const approveJoinRequest = async (
 
     if ((existingMember as any).status !== 'pending') {
       console.error('승인할 수 없는 상태:', (existingMember as any).status)
+      return { success: false }
+    }
+
+    // 권한 확인: 리더 또는 부리더만 승인 가능
+    const hasPermission = await canApproveMember(
+      (existingMember as any).team_id,
+      approverId
+    )
+
+    if (!hasPermission) {
+      console.error('승인 권한 없음:', approverId)
       return { success: false }
     }
 
@@ -543,13 +585,13 @@ export const approveJoinRequest = async (
         .eq('id', (updatedMember as any).team_id)
     }
 
-    return { 
+    return {
       success: true,
       member: {
         id: updatedMember.id,
         teamId: updatedMember.team_id,
         userId: updatedMember.user_id,
-        role: updatedMember.role as 'leader' | 'member',
+        role: updatedMember.role as 'leader' | 'vice_leader' | 'member',
         joinedAt: new Date(updatedMember.joined_at),
         nickname: updatedMember.nickname,
         tier: updatedMember.tier as TierType,
@@ -578,13 +620,15 @@ export const approveJoinRequest = async (
 
 export const rejectJoinRequest = async (
   memberId: string,
+  rejecterId: string,
   reason?: string
 ): Promise<{ success: boolean }> => {
   try {
     // 입력값 검증
     const validatedMemberId = validateUUID(memberId)
-    
-    if (!validatedMemberId) {
+    const validatedRejecterId = validateUUID(rejecterId)
+
+    if (!validatedMemberId || !validatedRejecterId) {
       console.error('거절 요청 입력값 검증 실패')
       return { success: false }
     }
@@ -592,7 +636,7 @@ export const rejectJoinRequest = async (
     // 먼저 해당 멤버가 존재하고 pending 상태인지 확인
     const { data: existingMember, error: checkError } = await supabase
       .from('team_members')
-      .select('*')
+      .select('*, team_id')
       .eq('id', memberId)
       .single()
 
@@ -603,6 +647,17 @@ export const rejectJoinRequest = async (
 
     if ((existingMember as any).status !== 'pending') {
       console.error('거절할 수 없는 상태:', (existingMember as any).status)
+      return { success: false }
+    }
+
+    // 권한 확인: 리더 또는 부리더만 거절 가능
+    const hasPermission = await canApproveMember(
+      (existingMember as any).team_id,
+      rejecterId
+    )
+
+    if (!hasPermission) {
+      console.error('거절 권한 없음:', rejecterId)
       return { success: false }
     }
 
@@ -962,4 +1017,156 @@ export const getMemberNickname = async (memberId: string): Promise<string> => {
 export const calculateWinRate = (wins: number, losses: number): number => {
   if (wins + losses === 0) return 0
   return Math.round((wins / (wins + losses)) * 100)
+}
+
+// ============================================================================
+// 부리더 관리 API 함수들
+// ============================================================================
+
+/**
+ * 부리더 임명
+ * @param teamId - 팀 ID
+ * @param targetUserId - 부리더로 임명할 사용자 ID
+ * @param leaderId - 리더 ID (권한 검증용)
+ */
+export const promoteToViceLeader = async (
+  teamId: string,
+  targetUserId: string,
+  leaderId: string
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    // 입력값 검증
+    const validatedTeamId = validateUUID(teamId)
+    const validatedTargetUserId = validateUUID(targetUserId)
+    const validatedLeaderId = validateUUID(leaderId)
+
+    if (!validatedTeamId || !validatedTargetUserId || !validatedLeaderId) {
+      return { success: false, message: '유효하지 않은 요청입니다.' }
+    }
+
+    // 1. 요청자가 리더인지 확인
+    const { data: leaderMember, error: leaderError } = await supabase
+      .from('team_members')
+      .select('role')
+      .eq('team_id', validatedTeamId)
+      .eq('user_id', validatedLeaderId)
+      .eq('status', 'active')
+      .single()
+
+    if (leaderError || !leaderMember || (leaderMember as any).role !== 'leader') {
+      return { success: false, message: '리더만 부리더를 임명할 수 있습니다.' }
+    }
+
+    // 2. 대상 멤버가 활성 멤버인지 확인
+    const { data: targetMember, error: targetError } = await supabase
+      .from('team_members')
+      .select('id, role, nickname')
+      .eq('team_id', validatedTeamId)
+      .eq('user_id', validatedTargetUserId)
+      .eq('status', 'active')
+      .single()
+
+    if (targetError || !targetMember) {
+      return { success: false, message: '대상 멤버를 찾을 수 없습니다.' }
+    }
+
+    if ((targetMember as any).role === 'leader') {
+      return { success: false, message: '리더는 부리더로 변경할 수 없습니다.' }
+    }
+
+    if ((targetMember as any).role === 'vice_leader') {
+      return { success: false, message: '이미 부리더입니다.' }
+    }
+
+    // 3. 부리더로 역할 변경
+    const { error: updateError } = await (supabase as any)
+      .from('team_members')
+      .update({ role: 'vice_leader' })
+      .eq('id', (targetMember as any).id)
+
+    if (updateError) {
+      console.error('부리더 임명 오류:', updateError)
+      return { success: false, message: '부리더 임명에 실패했습니다.' }
+    }
+
+    return {
+      success: true,
+      message: `${(targetMember as any).nickname}님을 부리더로 임명했습니다.`
+    }
+  } catch (error) {
+    console.error('부리더 임명 중 예외:', error)
+    return { success: false, message: '부리더 임명 중 오류가 발생했습니다.' }
+  }
+}
+
+/**
+ * 부리더 해임
+ * @param teamId - 팀 ID
+ * @param targetUserId - 부리더 해임할 사용자 ID
+ * @param leaderId - 리더 ID (권한 검증용)
+ */
+export const demoteFromViceLeader = async (
+  teamId: string,
+  targetUserId: string,
+  leaderId: string
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    // 입력값 검증
+    const validatedTeamId = validateUUID(teamId)
+    const validatedTargetUserId = validateUUID(targetUserId)
+    const validatedLeaderId = validateUUID(leaderId)
+
+    if (!validatedTeamId || !validatedTargetUserId || !validatedLeaderId) {
+      return { success: false, message: '유효하지 않은 요청입니다.' }
+    }
+
+    // 1. 요청자가 리더인지 확인
+    const { data: leaderMember, error: leaderError } = await supabase
+      .from('team_members')
+      .select('role')
+      .eq('team_id', validatedTeamId)
+      .eq('user_id', validatedLeaderId)
+      .eq('status', 'active')
+      .single()
+
+    if (leaderError || !leaderMember || (leaderMember as any).role !== 'leader') {
+      return { success: false, message: '리더만 부리더를 해임할 수 있습니다.' }
+    }
+
+    // 2. 대상이 부리더인지 확인
+    const { data: targetMember, error: targetError } = await supabase
+      .from('team_members')
+      .select('id, role, nickname')
+      .eq('team_id', validatedTeamId)
+      .eq('user_id', validatedTargetUserId)
+      .eq('status', 'active')
+      .single()
+
+    if (targetError || !targetMember) {
+      return { success: false, message: '대상 멤버를 찾을 수 없습니다.' }
+    }
+
+    if ((targetMember as any).role !== 'vice_leader') {
+      return { success: false, message: '부리더가 아닙니다.' }
+    }
+
+    // 3. 일반 멤버로 역할 변경
+    const { error: updateError } = await (supabase as any)
+      .from('team_members')
+      .update({ role: 'member' })
+      .eq('id', (targetMember as any).id)
+
+    if (updateError) {
+      console.error('부리더 해임 오류:', updateError)
+      return { success: false, message: '부리더 해임에 실패했습니다.' }
+    }
+
+    return {
+      success: true,
+      message: `${(targetMember as any).nickname}님을 일반 멤버로 변경했습니다.`
+    }
+  } catch (error) {
+    console.error('부리더 해임 중 예외:', error)
+    return { success: false, message: '부리더 해임 중 오류가 발생했습니다.' }
+  }
 }

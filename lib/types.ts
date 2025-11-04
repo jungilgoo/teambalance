@@ -26,7 +26,7 @@ export interface TeamMember {
   id: string
   teamId: string
   userId: string
-  role: 'leader' | 'member'
+  role: 'leader' | 'vice_leader' | 'member'
   joinedAt: Date
   nickname: string
   tier: TierType

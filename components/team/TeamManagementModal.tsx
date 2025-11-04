@@ -15,23 +15,27 @@ import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { TeamMember } from '@/lib/types'
-import { getPendingJoinRequests, approveJoinRequest, rejectJoinRequest, getTeamMembers, kickTeamMember } from '@/lib/supabase-api'
+import { getPendingJoinRequests, approveJoinRequest, getTeamMembers, kickTeamMember } from '@/lib/supabase-api'
+import { rejectJoinRequest, promoteToViceLeader, demoteFromViceLeader } from '@/lib/api/members'
 import { deleteTeam, canDeleteTeam } from '@/lib/api/teams'
 import { TierBadge } from '@/components/ui/tier-badge'
 import { positionNames } from '@/lib/utils'
-import { 
-  UserCheck, 
-  UserX, 
-  Clock, 
-  Users, 
+import {
+  UserCheck,
+  UserX,
+  Clock,
+  Users,
   AlertCircle,
   CheckCircle,
   XCircle,
   Loader2,
   Crown,
   AlertTriangle,
-  Trash2
-, Settings } from 'lucide-react'
+  Trash2,
+  Settings,
+  Shield,
+  UserMinus
+} from 'lucide-react'
 // import { toast } from 'sonner'
 
 interface TeamManagementModalProps {
@@ -170,7 +174,8 @@ export default function TeamManagementModal({
 
     try {
       const result = await rejectJoinRequest(
-        memberId, 
+        memberId,
+        currentUserId,
         rejectionReason || '리더에 의해 거절됨'
       )
       
@@ -229,6 +234,68 @@ export default function TeamManagementModal({
       alert('멤버 추방 중 오류가 발생했습니다.')
     } finally {
       setIsKicking(false)
+    }
+  }
+
+  // 부리더 임명
+  const handlePromoteToViceLeader = async (member: TeamMember) => {
+    const confirmed = confirm(
+      `${member.nickname}님을 부리더로 임명하시겠습니까?\n\n` +
+      '부리더는 멤버 승인/거절 권한을 갖게 됩니다.'
+    )
+
+    if (!confirmed) return
+
+    try {
+      const result = await promoteToViceLeader(
+        teamId,
+        member.userId,
+        currentUserId
+      )
+
+      if (result.success) {
+        alert(result.message)
+        await loadActiveMembers()
+        if (onMemberUpdate) {
+          onMemberUpdate()
+        }
+      } else {
+        alert(result.message)
+      }
+    } catch (error) {
+      console.error('부리더 임명 오류:', error)
+      alert('부리더 임명 중 오류가 발생했습니다.')
+    }
+  }
+
+  // 부리더 해임
+  const handleDemoteFromViceLeader = async (member: TeamMember) => {
+    const confirmed = confirm(
+      `${member.nickname}님을 일반 멤버로 변경하시겠습니까?\n\n` +
+      '부리더 권한이 제거됩니다.'
+    )
+
+    if (!confirmed) return
+
+    try {
+      const result = await demoteFromViceLeader(
+        teamId,
+        member.userId,
+        currentUserId
+      )
+
+      if (result.success) {
+        alert(result.message)
+        await loadActiveMembers()
+        if (onMemberUpdate) {
+          onMemberUpdate()
+        }
+      } else {
+        alert(result.message)
+      }
+    } catch (error) {
+      console.error('부리더 해임 오류:', error)
+      alert('부리더 해임 중 오류가 발생했습니다.')
     }
   }
 
@@ -488,22 +555,50 @@ export default function TeamManagementModal({
                         isLeader={isLeader}
                         showActions={isLeader && member.role !== 'leader' && member.userId !== currentUserId}
                       >
-                        {/* 추방 버튼 (리더가 아니고 자신이 아닌 경우만) */}
+                        {/* 리더 전용 관리 버튼 (자신 제외, 리더 제외) */}
                         {isLeader && member.role !== 'leader' && member.userId !== currentUserId && (
-                          <Button
-                            onClick={() => handleKickMember(member)}
-                            variant="ghost"
-                            size="sm"
-                            className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
-                            disabled={isKicking}
-                          >
-                            {isKicking ? (
-                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            ) : (
-                              <Trash2 className="w-4 h-4 mr-2" />
+                          <div className="space-y-2">
+                            {/* 부리더 임명/해임 버튼 */}
+                            {member.role === 'member' && (
+                              <Button
+                                onClick={() => handlePromoteToViceLeader(member)}
+                                variant="outline"
+                                size="sm"
+                                className="w-full text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                              >
+                                <Shield className="w-4 h-4 mr-2" />
+                                부리더 임명
+                              </Button>
                             )}
-                            추방
-                          </Button>
+
+                            {member.role === 'vice_leader' && (
+                              <Button
+                                onClick={() => handleDemoteFromViceLeader(member)}
+                                variant="outline"
+                                size="sm"
+                                className="w-full text-gray-600 hover:text-gray-700 hover:bg-gray-50"
+                              >
+                                <UserMinus className="w-4 h-4 mr-2" />
+                                부리더 해임
+                              </Button>
+                            )}
+
+                            {/* 추방 버튼 */}
+                            <Button
+                              onClick={() => handleKickMember(member)}
+                              variant="ghost"
+                              size="sm"
+                              className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                              disabled={isKicking}
+                            >
+                              {isKicking ? (
+                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              ) : (
+                                <Trash2 className="w-4 h-4 mr-2" />
+                              )}
+                              추방
+                            </Button>
+                          </div>
                         )}
                       </MemberCard>
                     ))}

@@ -150,6 +150,16 @@ export default function TeamDashboard() {
 
   const isTeamLeader = authState.user && team && team.leaderId === authState.user.id
 
+  // 부리더 또는 리더인지 확인 (멤버 승인 권한)
+  const isLeaderOrViceLeader = useMemo(() => {
+    if (!authState.user) return false
+    if (isTeamLeader) return true
+
+    // 현재 사용자가 부리더인지 확인
+    const currentMember = members.find(m => m.userId === authState.user?.id)
+    return currentMember?.role === 'vice_leader'
+  }, [authState.user, isTeamLeader, members])
+
   // 실시간 승인 대기 요청 추적 (항상 호출, 팀 리더 여부와 관계없이)
   const {
     count: dynamicPendingCount,
@@ -159,12 +169,12 @@ export default function TeamDashboard() {
 
   // 실시간 승인 대기 카운트를 로컬 상태와 동기화
   useEffect(() => {
-    if (isTeamLeader) {
+    if (isLeaderOrViceLeader) {
       setPendingRequestsCount(dynamicPendingCount)
     } else {
       setPendingRequestsCount(0)
     }
-  }, [dynamicPendingCount, isTeamLeader])
+  }, [dynamicPendingCount, isLeaderOrViceLeader])
 
   // 승인 대기 요청 수 로드 (실시간 Hook에서 처리됨)
   const loadPendingRequestsCount = async () => {
@@ -334,9 +344,9 @@ export default function TeamDashboard() {
                 <div>멤버 {members.length}명</div>
                 <div>{new Date(team.createdAt).toLocaleDateString('ko-KR')} 생성</div>
               </div>
-              {isTeamLeader && (
-                <Button 
-                  variant="outline" 
+              {isLeaderOrViceLeader && (
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => setIsTeamManagementModalOpen(true)}
                   className="relative"
