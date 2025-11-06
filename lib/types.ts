@@ -103,18 +103,6 @@ export interface ApiResponse<T> {
   message?: string
 }
 
-// 팀 초대 타입
-export interface TeamInvite {
-  id: string
-  teamId: string
-  createdBy: string
-  inviteCode: string
-  expiresAt: Date
-  maxUses?: number
-  currentUses: number
-  isActive: boolean
-  createdAt: Date
-}
 
 // 세션 및 경기 관련 타입
 export interface Session {

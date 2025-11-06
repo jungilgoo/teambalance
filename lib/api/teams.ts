@@ -1,5 +1,5 @@
 import { createSupabaseBrowser } from '../supabase'
-import { Team, TeamInvite } from '../types'
+import { Team } from '../types'
 import { validateTeamName, validateUUID, validateSearchQuery } from '../input-validator'
 import { handleError, normalizeSupabaseError, ValidationError, NotFoundError } from '../errors'
 import { logger } from '../logger'
@@ -165,139 +165,6 @@ export const searchPublicTeams = async (searchQuery: string): Promise<Team[]> =>
   }
 }
 
-// ============================================================================
-// 팀 초대 시스템
-// ============================================================================
-
-export const generateInviteCode = (length: number = 8): string => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  let result = ''
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return result
-}
-
-export const createTeamInvite = async (
-  teamId: string,
-  createdById: string,
-  expiresInDays: number = 7
-): Promise<TeamInvite | null> => {
-  try {
-    const inviteCode = generateInviteCode()
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + expiresInDays)
-
-    const { data: invite, error } = await (supabase as any)
-      .from('team_invites')
-      .insert({
-        team_id: teamId,
-        invite_code: inviteCode,
-        created_by: createdById,
-        expires_at: expiresAt.toISOString(),
-        current_uses: 0,
-        max_uses: null,
-        is_active: true,
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('팀 초대 생성 오류:', error)
-      return null
-    }
-
-    return {
-      id: invite.id,
-      teamId: invite.team_id,
-      inviteCode: invite.invite_code,
-      createdBy: invite.created_by,
-      expiresAt: new Date(invite.expires_at),
-      currentUses: invite.current_uses,
-      maxUses: invite.max_uses,
-      isActive: invite.is_active,
-      createdAt: new Date(invite.created_at)
-    }
-  } catch (error) {
-    console.error('팀 초대 생성 중 예외:', error)
-    return null
-  }
-}
-
-export const getTeamByInviteCode = async (inviteCode: string): Promise<any | null> => {
-  try {
-    // 초대 코드 유효성 검사 및 팀 정보 조회
-    const { data: invite, error } = await (supabase as any)
-      .from('team_invites')
-      .select(`
-        *,
-        teams (
-          id,
-          name,
-          description,
-          is_public,
-          member_count
-        )
-      `)
-      .eq('invite_code', inviteCode)
-      .eq('is_active', true)
-      .gte('expires_at', new Date().toISOString())
-      .single()
-
-    if (error || !invite || !invite.teams) {
-      console.error('초대 코드 조회 오류:', error)
-      return null
-    }
-
-    return {
-      inviteCode: invite.invite_code,
-      team: {
-        id: invite.teams.id,
-        name: invite.teams.name,
-        description: invite.teams.description,
-        memberCount: invite.teams.member_count,
-        isPublic: invite.teams.is_public
-      },
-      expiresAt: new Date(invite.expires_at),
-      currentUses: invite.current_uses,
-      maxUses: invite.max_uses
-    }
-  } catch (error) {
-    console.error('초대 코드 조회 중 예외:', error)
-    return null
-  }
-}
-
-export const getTeamInvites = async (teamId: string): Promise<TeamInvite[]> => {
-  try {
-    const { data: invites, error } = await (supabase as any)
-      .from('team_invites')
-      .select('*')
-      .eq('team_id', teamId)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('팀 초대 목록 조회 오류:', error)
-      return []
-    }
-
-    return invites.map((invite: any) => ({
-      id: invite.id,
-      teamId: invite.team_id,
-      inviteCode: invite.invite_code,
-      createdBy: invite.created_by,
-      expiresAt: new Date(invite.expires_at),
-      currentUses: invite.current_uses,
-      maxUses: invite.max_uses,
-      isActive: invite.is_active,
-      createdAt: new Date(invite.created_at)
-    }))
-  } catch (error) {
-    console.error('팀 초대 목록 조회 중 예외:', error)
-    return []
-  }
-}
 
 // ============================================================================
 // 팀 삭제/해체 시스템
@@ -343,7 +210,7 @@ export const deleteTeam = async (
     logger.dbQuery('teams.delete()', undefined, { ...context, teamName: team.name })
 
     // 2. 팀 삭제 (CASCADE로 관련 데이터 자동 삭제됨)
-    // team_members, team_invites, sessions, matches 등이 ON DELETE CASCADE로 자동 삭제
+    // team_members, sessions, matches 등이 ON DELETE CASCADE로 자동 삭제
     const { error: deleteError } = await (supabase as any)
       .from('teams')
       .delete()

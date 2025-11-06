@@ -126,41 +126,6 @@ export type Database = {
           joined_at?: string
         }
       }
-      team_invites: {
-        Row: {
-          id: string
-          team_id: string
-          created_by: string
-          invite_code: string
-          expires_at: string
-          max_uses: number | null
-          current_uses: number
-          is_active: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          team_id: string
-          created_by: string
-          invite_code: string
-          expires_at: string
-          max_uses?: number | null
-          current_uses?: number
-          is_active?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          team_id?: string
-          created_by?: string
-          invite_code?: string
-          expires_at?: string
-          max_uses?: number | null
-          current_uses?: number
-          is_active?: boolean
-          created_at?: string
-        }
-      }
       sessions: {
         Row: {
           id: string

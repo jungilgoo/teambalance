@@ -57,24 +57,8 @@ CREATE TABLE IF NOT EXISTS team_members (
     CHECK (main_position != ALL(sub_positions)) -- 주 포지션이 부포지션 배열에 포함되지 않도록
 );
 
--- 4. team_invites 테이블
-CREATE TABLE IF NOT EXISTS team_invites (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    team_id UUID REFERENCES teams(id) ON DELETE CASCADE NOT NULL,
-    created_by UUID REFERENCES profiles(id) NOT NULL,
-    invite_code TEXT UNIQUE NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL,
-    max_uses INTEGER CHECK (max_uses > 0),
-    current_uses INTEGER DEFAULT 0 CHECK (current_uses >= 0),
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    
-    -- 제약 조건
-    CHECK (expires_at > created_at),
-    CHECK (max_uses IS NULL OR current_uses <= max_uses)
-);
 
--- 5. sessions 테이블
+-- 4. sessions 테이블
 CREATE TABLE IF NOT EXISTS sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id UUID REFERENCES teams(id) ON DELETE CASCADE NOT NULL,
@@ -86,7 +70,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. matches 테이블
+-- 5. matches 테이블
 CREATE TABLE IF NOT EXISTS matches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID REFERENCES sessions(id) NOT NULL,
@@ -125,10 +109,6 @@ CREATE INDEX IF NOT EXISTS idx_team_members_role ON team_members(role);
 CREATE INDEX IF NOT EXISTS idx_team_members_status ON team_members(status);
 CREATE INDEX IF NOT EXISTS idx_team_members_tier_score ON team_members(tier_score DESC);
 
--- team_invites 테이블 인덱스
-CREATE INDEX IF NOT EXISTS idx_team_invites_code ON team_invites(invite_code);
-CREATE INDEX IF NOT EXISTS idx_team_invites_team_id ON team_invites(team_id);
-CREATE INDEX IF NOT EXISTS idx_team_invites_active ON team_invites(is_active, expires_at);
 
 -- sessions 테이블 인덱스
 CREATE INDEX IF NOT EXISTS idx_sessions_team_id ON sessions(team_id);

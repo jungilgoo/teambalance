@@ -18,7 +18,6 @@ import { useTeamMembersRealtime } from '@/lib/hooks/useTeamMembersRealtime'
 import { usePendingRequestsCount } from '@/lib/hooks/usePendingRequestsRealtime'
 import TeamBalanceModal from '@/components/session/TeamBalanceModal'
 import MatchResultInputModal from '@/components/session/MatchResultInputModal'
-import InviteMemberModal from '@/components/team/InviteMemberModal'
 import { TierBadge } from '@/components/ui/tier-badge'
 import { MemberCard } from '@/components/ui/member-card'
 import { TierEditDialog } from '@/components/ui/tier-edit-dialog'
@@ -424,12 +423,6 @@ export default function TeamDashboard() {
                   메타 분석 보기
                 </Button>
                 
-                <InviteMemberModal 
-                  teamId={teamId} 
-                  currentUserId={authState.user?.id || ''} 
-                  teamName={team?.name || ''}
-                  isTeamLeader={!!isTeamLeader}
-                />
               </CardContent>
             </Card>
 

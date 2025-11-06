@@ -8,10 +8,6 @@ export {
   createTeam,
   getPublicTeams,
   searchPublicTeams,
-  generateInviteCode,
-  createTeamInvite,
-  getTeamByInviteCode,
-  getTeamInvites
 } from './teams'
 
 // 멤버 관리 API
@@ -27,7 +23,6 @@ export {
   kickTeamMember,
   updateMemberTier,
   updateMemberPositions,
-  joinTeamByInviteCode,
   getMemberWithUser,
   getMemberNickname,
   calculateWinRate
@@ -70,4 +65,4 @@ export {
 // 타입 재내보내기 (호환성 유지)
 // ============================================================================
 
-export type { Team, TeamMember, User, Match, TeamInvite } from '../types'
+export type { Team, TeamMember, User, Match } from '../types'

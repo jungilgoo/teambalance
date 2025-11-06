@@ -1,5 +1,5 @@
 import { createSupabaseBrowser } from '../supabase'
-import { Team, TeamMember, User, TierType, Position, MemberStats, TeamInvite } from '../types'
+import { Team, TeamMember, User, TierType, Position, MemberStats } from '../types'
 import { calculateTierScore } from '../stats'
 import { validateUUID, validateString, validatePosition, validateTier } from '../input-validator'
 import type { Database } from '../database.types'
@@ -883,113 +883,6 @@ export const updateMemberPositions = async (
   }
 }
 
-export const joinTeamByInviteCode = async (
-  inviteCode: string,
-  userId: string,
-  nickname: string,
-  tier: TierType,
-  mainPosition: Position,
-  subPositions: Position[]
-): Promise<{ success: boolean; message: string; team?: { id: string; name: string } }> => {
-  try {
-    // 1. 초대 코드 유효성 확인
-    const { data: invite, error: inviteError } = await supabase
-      .from('team_invites')
-      .select(`
-        *,
-        teams (
-          id,
-          name,
-          is_public
-        )
-      `)
-      .eq('invite_code', inviteCode)
-      .eq('is_active', true)
-      .gte('expires_at', new Date().toISOString())
-      .single()
-
-    if (inviteError || !invite || !(invite as any).teams) {
-      console.error('초대 코드 확인 오류:', inviteError)
-      return { success: false, message: '유효하지 않거나 만료된 초대 코드입니다.' }
-    }
-
-    const inviteData = invite as any
-    const teamId = inviteData.team_id
-    const team = inviteData.teams as { id: string; name: string; is_public: boolean }
-
-    // 2. 이미 해당 팀의 멤버인지 확인
-    const { data: existingMember, error: memberCheckError } = await supabase
-      .from('team_members')
-      .select('id, status')
-      .eq('team_id', teamId)
-      .eq('user_id', userId)
-      .single()
-
-    if (memberCheckError && memberCheckError.code !== 'PGRST116') {
-      console.error('멤버 중복 확인 오류:', memberCheckError)
-      return { success: false, message: '멤버 상태 확인 중 오류가 발생했습니다.' }
-    }
-
-    if (existingMember) {
-      switch ((existingMember as any).status) {
-        case 'active':
-          return { success: false, message: '이미 해당 팀의 활성 멤버입니다.' }
-        case 'pending':
-          return { success: false, message: '이미 참가 요청이 대기 중입니다.' }
-        case 'kicked':
-          // 추방된 멤버는 초대 코드로 재참가 가능
-          break
-      }
-    }
-
-    // 3. 팀에 멤버 추가 (초대 코드로는 즉시 승인)
-    const newMember = await addTeamMember(
-      teamId,
-      userId,
-      nickname,
-      tier,
-      mainPosition,
-      subPositions,
-      'member',
-      'active'  // 초대 코드로는 즉시 활성 상태
-    )
-
-    if (!newMember) {
-      return { success: false, message: '팀 참가 처리에 실패했습니다.' }
-    }
-
-    // 4. 팀 멤버 수 증가 - 현재 활성 멤버 수로 업데이트
-    const { count: activeMemberCount } = await supabase
-      .from('team_members')
-      .select('*', { count: 'exact', head: true })
-      .eq('team_id', teamId)
-      .eq('status', 'active')
-
-    await (supabase as any)
-      .from('teams')
-      .update({ 
-        member_count: (activeMemberCount || 0)
-      })
-      .eq('id', teamId)
-
-    // 5. 초대 코드 사용 횟수 증가
-    await (supabase as any)
-      .from('team_invites')
-      .update({ 
-        current_uses: (inviteData.current_uses || 0) + 1
-      })
-      .eq('id', inviteData.id)
-
-    return { 
-      success: true, 
-      message: '팀에 성공적으로 참가했습니다!',
-      team: { id: team.id, name: team.name }
-    }
-  } catch (error) {
-    console.error('초대 코드로 팀 참가 실패:', error)
-    return { success: false, message: '팀 참가 중 오류가 발생했습니다.' }
-  }
-}
 
 // ============================================================================
 // 유틸리티 함수들
